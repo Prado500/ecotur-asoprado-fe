@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../widgets/custom_input.dart';
-import '../widgets/diagonal_painter.dart';
+import '../utils/ui_helpers.dart';
+import '../widgets/common/custom_input.dart';
+import '../widgets/common/diagonal_painter.dart';
 import 'admin_dashboard_screen.dart';
 import 'catalog_screen.dart';
 import 'register_screen.dart';
@@ -67,9 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error),
-    );
+    UIHelpers.showSnackBar(context, message, isError: true);
   }
 
   @override

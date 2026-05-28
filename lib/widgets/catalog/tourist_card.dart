@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/tourist_service_model.dart';
-import '../screens/details_screen.dart';
+import '../../models/tourist_service_model.dart';
+import '../../screens/details_screen.dart';
 
 class TouristCard extends StatelessWidget {
   final TouristService service;

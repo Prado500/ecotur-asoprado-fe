@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/tourist_service_model.dart';
-import '../widgets/image_carousel.dart';
+import '../widgets/catalog/image_carousel.dart';
 
 class DetailsScreen extends StatelessWidget {
   final TouristService service;

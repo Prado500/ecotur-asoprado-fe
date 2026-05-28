@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../widgets/grid_pattern_painter.dart';
-import '../widgets/stat_card.dart';
-import '../widgets/admin_bottom_nav_bar.dart';
+import '../widgets/common/grid_pattern_painter.dart';
+import '../widgets/admin/stat_card.dart';
+import '../widgets/admin/admin_bottom_nav_bar.dart';
 import 'catalog_screen.dart';
 import 'admin_create_package_screen.dart';
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/tourist_service_model.dart';
-import '../widgets/grid_pattern_painter.dart';
-import '../widgets/custom_bottom_nav_bar.dart';
-import '../widgets/tourist_card.dart';
+import '../widgets/common/grid_pattern_painter.dart';
+import '../widgets/common/custom_bottom_nav_bar.dart';
+import '../widgets/catalog/tourist_card.dart';
 
 class CatalogScreen extends StatefulWidget {
   final ApiService? apiService;
