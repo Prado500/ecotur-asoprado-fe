@@ -2,26 +2,23 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 class AuthService {
+  static const String _tokenKey = 'jwt_token';
 
-
+  /// Obtiene la URL base inyectada dinámicamente según el entorno.
   String get baseUrl {
-   
     String url = dotenv.env['API_URL'] ?? 'http://localhost:8000';
-
 
     if (!kIsWeb && url.contains('localhost')) {
       return url.replaceAll('localhost', '10.0.2.2');
     }
-    
+
     return url;
   }
 
-  static const String _tokenKey = 'jwt_token';
-
-  // --- 1. LOGIN ---
+  /// Autentica al usuario contra el backend y almacena el JWT localmente.
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
@@ -40,136 +37,99 @@ class AuthService {
         final data = json.decode(response.body);
         final token = data['access_token'];
 
-        // Guardamos el token en el dispositivo
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_tokenKey, token);
 
-        // Extraemos la información útil (como el rol)
         return {
           'success': true,
           'token': token,
           'role': _getRoleFromToken(token),
         };
       } else {
-        // --- DEFENSA EN PROFUNDIDAD: Manejo seguro de errores (422, 401, 404) ---
-        print(" ERROR FASTAPI LOGIN (${response.statusCode}): ${response.body}");
-
-        try {
-          final data = json.decode(utf8.decode(response.bodyBytes));
-          String errorMessage = 'Error al iniciar sesión (Código: ${response.statusCode})';
-
-          if (data['detail'] != null) {
-            if (data['detail'] is List && data['detail'].isNotEmpty) {
-              // Manejo seguro de errores de validación de Pydantic (Listas)
-              final firstError = data['detail'][0] as Map<String, dynamic>;
-              final locList = firstError['loc'] as List<dynamic>?;
-              final msg = firstError['msg']?.toString() ?? 'Error de validación';
-
-              // Extraemos el nombre del campo de forma segura
-              String fieldName = 'Campo';
-              if (locList != null && locList.isNotEmpty) {
-                fieldName = locList.last.toString();
-              }
-
-              errorMessage = "$fieldName: $msg";
-            } else if (data['detail'] is String) {
-              // Manejo de errores directos de FastAPI (ej: HTTPException detail="Credenciales incorrectas")
-              errorMessage = data['detail'];
-            }
-          }
-          return {'success': false, 'message': errorMessage};
-        } catch (e) {
-          print(' Error al decodificar JSON de error en login: $e');
-          return {'success': false, 'message': 'El servidor devolvió un error (Código: ${response.statusCode})'};
-        }
+        return _handleApiError(response, 'iniciar sesión');
       }
     } catch (e) {
-      // Capturamos caídas de red si el servidor de FastAPI está apagado
-      print(' CRASH DE RED EN FRONTEND (Login): $e');
+      debugPrint('CRASH DE RED EN FRONTEND (Login): $e');
       return {'success': false, 'message': 'No se pudo conectar con el servidor.'};
     }
   }
 
-
-  // --- 2. REGISTRO ---
+  /// Registra un nuevo usuario en el sistema.
   Future<Map<String, dynamic>> register(
       String email, String password, String firstName, String lastName, String phone, bool dataConsent) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/usuarios/registro'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'first_name': firstName,
+          'last_name': lastName,
+          'phone': phone,
+          'password': password,
+          'data_consent': dataConsent,
+        }),
+      );
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/usuarios/registro'), // Ajusta si tu ruta es /usuarios/registro
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'email': email,
-        'first_name': firstName, // Coincide con Pydantic
-        'last_name': lastName,   // Coincide con Pydantic
-        'phone': phone,          // Nuevo campo
-        'password': password,
-        'data_consent': dataConsent, // Nuevo campo
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      return {'success': true};
-    } else {
       if (response.statusCode == 201 || response.statusCode == 200) {
         return {'success': true};
       } else {
-        print(" ERROR FASTAPI (422): ${response.body}");
-
-        try {
-          final data = json.decode(utf8.decode(response.bodyBytes));
-          String errorMessage = 'Error al registrar (Código: ${response.statusCode})';
-
-          if (data['detail'] != null) {
-            if (data['detail'] is List && data['detail'].isNotEmpty) {
-              // Forma segura de leer la lista en Dart
-              final firstError = data['detail'][0] as Map<String, dynamic>;
-              final locList = firstError['loc'] as List<dynamic>?;
-              final msg = firstError['msg']?.toString() ?? 'Error de validación';
-
-              // Extraemos el nombre del campo de forma segura
-              String fieldName = 'Campo';
-              if (locList != null && locList.isNotEmpty) {
-                fieldName = locList.last.toString();
-              }
-
-              errorMessage = "$fieldName: $msg";
-            } else if (data['detail'] is String) {
-              errorMessage = data['detail'];
-            }
-          }
-          return {'success': false, 'message': errorMessage};
-        } catch (e) {
-          print(' Error al decodificar JSON de error: $e');
-          return {'success': false, 'message': 'El servidor devolvió un error (Código: ${response.statusCode})'};
-        }
+        return _handleApiError(response, 'registrar');
       }
-
+    } catch (e) {
+      debugPrint('CRASH DE RED EN FRONTEND (Registro): $e');
+      return {'success': false, 'message': 'No se pudo conectar con el servidor.'};
     }
   }
 
-  // --- 3. UTILIDADES ---
-
-  // Saber si hay un usuario conectado
+  /// Verifica si existe una sesión activa basada en la presencia del token.
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.containsKey(_tokenKey);
   }
 
-  // Cerrar sesión
+  /// Cierra la sesión eliminando el token almacenado.
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
   }
 
-  // Truco Ninja: Decodificar JWT en Dart sin librerías pesadas
+  /// Centraliza el procesamiento seguro de errores provenientes de Pydantic/FastAPI.
+  Map<String, dynamic> _handleApiError(http.Response response, String action) {
+    debugPrint("ERROR FASTAPI (${response.statusCode}): ${response.body}");
+    try {
+      final data = json.decode(utf8.decode(response.bodyBytes));
+      String errorMessage = 'Error al $action (Código: ${response.statusCode})';
+
+      if (data['detail'] != null) {
+        if (data['detail'] is List && data['detail'].isNotEmpty) {
+          final firstError = data['detail'][0] as Map<String, dynamic>;
+          final locList = firstError['loc'] as List<dynamic>?;
+          final msg = firstError['msg']?.toString() ?? 'Error de validación';
+
+          String fieldName = 'Campo';
+          if (locList != null && locList.isNotEmpty) {
+            fieldName = locList.last.toString();
+          }
+          errorMessage = "$fieldName: $msg";
+        } else if (data['detail'] is String) {
+          errorMessage = data['detail'];
+        }
+      }
+      return {'success': false, 'message': errorMessage};
+    } catch (e) {
+      debugPrint('Error al decodificar JSON de error: $e');
+      return {'success': false, 'message': 'El servidor devolvió un error (Código: ${response.statusCode})'};
+    }
+  }
+
+  /// Decodifica el JWT de forma ligera para extraer el rol del usuario.
   String _getRoleFromToken(String token) {
     try {
       final parts = token.split('.');
-      if (parts.length != 3) return 'turista'; // Fallback
+      if (parts.length != 3) return 'turista';
 
       String payload = parts[1];
-      // Restaurar el padding de base64 si es necesario
       String normalized = base64Url.normalize(payload);
       String decoded = utf8.decode(base64Url.decode(normalized));
 
