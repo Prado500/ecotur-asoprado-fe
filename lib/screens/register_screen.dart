@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../utils/ui_helpers.dart';
+import '../widgets/common/custom_input.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -9,6 +11,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>(); // <-- La llave maestra del formulario
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -18,55 +21,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _authService = AuthService();
 
   bool _isLoading = false;
-  bool _obscurePassword = true;
-  bool _dataConsent = false; // Estado para el checkbox de Pydantic
+  bool _dataConsent = false;
 
   void _handleRegister() async {
-    // 1. Validar que no haya campos vacíos
-    if (_firstNameController.text.trim().isEmpty ||
-        _lastNameController.text.trim().isEmpty ||
-        _phoneController.text.trim().isEmpty ||
-        _emailController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Por favor, completa todos los campos.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      return;
-    }
+    // 🛑 CAPA 1: Validación visual síncrona (Pinta de rojo lo que falte)
+    if (!_formKey.currentState!.validate()) return;
 
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(_emailController.text.trim())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Por favor, ingresa un correo electrónico válido (ej: usuario@correo.com).'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      return; // Detenemos la ejecución aquí mismo
-    }
-
-
-    if (_passwordController.text.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('La contraseña debe tener al menos 8 caracteres.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      return; // Detenemos la ejecución aquí mismo
-    }
-
-    // 2. Validar que aceptó el tratamiento de datos (data_consent)
+    // Validación manual de checkbox (ya que no es un TextFormField)
     if (!_dataConsent) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Debes aceptar el tratamiento de datos para continuar.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      _showError('Debes aceptar el tratamiento de datos para continuar.');
       return;
     }
 
@@ -86,29 +49,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
+      // 🌍 CAPA 2: Validación asíncrona / Servidor
       if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('¡Cuenta creada exitosamente! Ahora inicia sesión.'),
-              backgroundColor: Color(0xFF006C49)
-          ),
-        );
-        Navigator.pop(context); // Vuelve al Login
+        UIHelpers.showSnackBar(context, '¡Cuenta creada exitosamente! Ahora inicia sesión.', isError: false);
+        Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message']), backgroundColor: Theme.of(context).colorScheme.error),
-        );
+        _showError(result['message']);
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Error de conexión al registrar.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      _showError('Error de conexión al registrar.');
     }
+  }
+
+  void _showError(String message) {
+    UIHelpers.showSnackBar(context, message, isError: true);
   }
 
   @override
@@ -162,138 +118,144 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   Padding(
                     padding: const EdgeInsets.fromLTRB(32, 40, 32, 32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('REGISTRO', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 28)),
-                        const SizedBox(height: 32),
+                    child: Form( // <-- ENVOLVEMOS EL CONTENIDO EN UN FORM
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('REGISTRO', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 28, fontFamily: 'Space Grotesk', fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 32),
 
-                        // Nombres y Apellidos en fila para ahorrar espacio
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildCustomInput(
-                                label: 'NOMBRE(S)',
-                                hint: 'Ej. Juan',
-                                icon: Icons.person_outline,
-                                controller: _firstNameController,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: CustomInput(
+                                  label: 'NOMBRE(S)',
+                                  hint: 'Ej. Juan',
+                                  icon: Icons.person_outline,
+                                  controller: _firstNameController,
+                                  validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildCustomInput(
-                                label: 'APELLIDO(S)',
-                                hint: 'Ej. Pérez',
-                                icon: Icons.badge_outlined,
-                                controller: _lastNameController,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: CustomInput(
+                                  label: 'APELLIDO(S)',
+                                  hint: 'Ej. Pérez',
+                                  icon: Icons.badge_outlined,
+                                  controller: _lastNameController,
+                                  validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
 
-                        // Teléfono
-                        _buildCustomInput(
-                          label: 'TELÉFONO',
-                          hint: 'Ej. 3124273211',
-                          icon: Icons.phone_outlined,
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 24),
+                          CustomInput(
+                            label: 'TELÉFONO',
+                            hint: 'Ej. 3124273211',
+                            icon: Icons.phone_outlined,
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            validator: (val) => val == null || val.length < 7 ? 'Teléfono inválido' : null,
+                          ),
+                          const SizedBox(height: 24),
 
-                        // Correo
-                        _buildCustomInput(
-                          label: 'CORREO ELECTRÓNICO',
-                          hint: 'tu@email.com',
-                          icon: Icons.email_outlined,
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 24),
+                          CustomInput(
+                            label: 'CORREO ELECTRÓNICO',
+                            hint: 'tu@email.com',
+                            icon: Icons.email_outlined,
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return 'Requerido';
+                              final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                              if (!emailRegex.hasMatch(val)) return 'Correo inválido';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 24),
 
-                        // Contraseña
-                        _buildCustomInput(
-                          label: 'DEFINIR CONTRASEÑA',
-                          hint: 'Crea una contraseña',
-                          icon: Icons.lock_outline,
-                          controller: _passwordController,
-                          isPassword: true,
-                        ),
+                          CustomInput(
+                            label: 'DEFINIR CONTRASEÑA',
+                            hint: 'Crea una contraseña',
+                            icon: Icons.lock_outline,
+                            controller: _passwordController,
+                            isPassword: true,
+                            validator: (val) => val == null || val.length < 8 ? 'Mínimo 8 caracteres' : null,
+                          ),
 
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                        // Checkbox para data_consent (¡Clave para Pydantic!)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: Checkbox(
-                                value: _dataConsent,
-                                activeColor: const Color(0xFF006875),
-                                onChanged: (value) {
-                                  setState(() => _dataConsent = value ?? false);
-                                },
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: _dataConsent,
+                                  activeColor: const Color(0xFF006875),
+                                  onChanged: (value) {
+                                    setState(() => _dataConsent = value ?? false);
+                                  },
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Acepto la política de privacidad y el tratamiento de mis datos personales.',
-                                style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Acepto la política de privacidad y el tratamiento de mis datos personales.',
+                                  style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
+                            ],
+                          ),
+                          const SizedBox(height: 32),
 
-                        // Botón Registro
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleRegister,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF006875),
-                              elevation: 0,
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text('Crear mi Cuenta', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward, size: 18),
-                              ],
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleRegister,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF006875),
+                                elevation: 0,
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('Crear mi Cuenta', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward, size: 18),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
+                          const SizedBox(height: 12),
 
-                        // Botón Volver
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFFE2E8F0)),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.login, size: 18, color: Color(0xFF3B494C)),
-                                SizedBox(width: 8),
-                                Text('Volver al Inicio de Sesión', style: TextStyle(color: Color(0xFF3B494C), fontSize: 16, fontWeight: FontWeight.w500)),
-                              ],
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.login, size: 18, color: Color(0xFF3B494C)),
+                                  SizedBox(width: 8),
+                                  Text('Volver al Inicio de Sesión', style: TextStyle(color: Color(0xFF3B494C), fontSize: 16, fontWeight: FontWeight.w500)),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -302,46 +264,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildCustomInput({
-    required String label,
-    required String hint,
-    required IconData icon,
-    required TextEditingController controller,
-    bool isPassword = false,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-            label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF3B494C), letterSpacing: 0.5)
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          obscureText: isPassword ? _obscurePassword : false,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-            prefixIcon: Icon(icon, color: const Color(0xFF6B7A7D)),
-            suffixIcon: isPassword
-                ? IconButton(
-              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF6B7A7D)),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-            )
-                : null,
-            enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE2E8F0))),
-            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF006875), width: 2)),
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            filled: false,
-          ),
-        ),
-      ],
     );
   }
 }

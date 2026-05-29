@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  // --- MAGIA PARA CERRAR SESIÓN ---
   void _handleLogout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
+    final authService = AuthService();
 
-    // 1. Destruimos las llaves del reino (Token y Rol)
-    await prefs.clear();
+    // Delegamos la lógica de negocio al servicio correspondiente
+    await authService.logout();
 
+    // Verificación de seguridad para evitar Memory Leaks
     if (!context.mounted) return;
 
-    // 2. Redirigimos al Login destruyendo todo el historial de navegación
+    // Destruimos el historial de navegación y volvemos al Login
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
