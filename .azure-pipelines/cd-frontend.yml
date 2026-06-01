@@ -1,0 +1,59 @@
+# ==============================================================================
+# PIPELINE CD: FRONTEND ECOTUR ASOPRADO
+# Propósito: Despliegue estático a los servidores de borde (CDN) de Azure.
+# Se dispara EXCLUSIVAMENTE tras un merge exitoso a las ramas principales.
+# ==============================================================================
+
+trigger:
+  branches:
+    include:
+      - develop
+      - staging
+      - main
+
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+
+variables:
+  ${{ if eq(variables['Build.SourceBranchName'], 'develop') }}:
+    ENTORNO: 'VG-ECOTUR-DEV'
+    SWA_TOKEN: $(AZURE_STATIC_WEB_APPS_API_TOKEN_DEVELOP)
+  ${{ if eq(variables['Build.SourceBranchName'], 'staging') }}:
+    ENTORNO: 'VG-ECOTUR-STG'
+    SWA_TOKEN: $(AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING)
+  ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+    ENTORNO: 'VG-ECOTUR-MAIN'
+    SWA_TOKEN: $(AZURE_STATIC_WEB_APPS_API_TOKEN_MAIN)
+
+stages:
+  - stage: Deploy_Web
+    displayName: 'Despliegue a Azure Static Web Apps'
+    jobs:
+      - job: Compilar_y_Desplegar
+        variables:
+          - group: ${{ variables.ENTORNO }}
+
+        steps:
+          - script: |
+              git clone https://github.com/flutter/flutter.git -b stable --depth 1
+              echo "##vso[task.prependpath]$(pwd)/flutter/bin"
+            displayName: 'Instalar Flutter SDK'
+
+          - script: flutter pub get
+            displayName: 'Instalar dependencias'
+
+          # Inyección de la variable BACKEND_URL sacada del Variable Group correspondiente
+          - script: flutter build web --release --dart-define=API_URL=$(BACKEND_URL)
+            displayName: 'CD: Construir Flutter Web Estático'
+
+          # Despliegue Oficial a la CDN de Azure
+          - task: AzureStaticWebApp@0
+            displayName: 'CD: Publicar en Azure SWA'
+            inputs:
+              app_location: '/'
+              output_location: 'build/web'
+              skip_api_build: true
+              azure_static_web_apps_api_token: ${{ variables.SWA_TOKEN }}
