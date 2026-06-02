@@ -1,0 +1,44 @@
+# ==============================================================================
+# PIPELINE CI: FRONTEND ECOTUR ASOPRADO
+# Propósito: Compuerta de calidad pre-merge (Pruebas unitarias) y generación de APK.
+# Se dispara EXCLUSIVAMENTE cuando se abre un Pull Request hacia ramas principales.
+# ==============================================================================
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - develop
+      - staging
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+
+  - script: |
+      git clone https://github.com/flutter/flutter.git -b stable --depth 1
+      echo "##vso[task.prependpath]$(pwd)/flutter/bin"
+    displayName: 'Instalar Flutter SDK'
+
+  #
+  - script: flutter pub get
+    displayName: 'Instalar dependencias (pub get)'
+
+  #
+  - script: flutter test
+    displayName: 'Quality Gate: Ejecutar Pruebas Unitarias'
+
+
+  - script: flutter build apk --release
+    displayName: 'CI: Construir Instalador Android (APK)'
+
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publicar Artefacto Móvil'
+    inputs:
+      PathtoPublish: 'build/app/outputs/flutter-apk/app-release.apk'
+      ArtifactName: 'ecotur-android-apk'
+      publishLocation: 'Container'
