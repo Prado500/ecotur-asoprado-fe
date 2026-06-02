@@ -45,11 +45,17 @@ stages:
           - script: flutter pub get
             displayName: 'Instalar dependencias'
 
-          # Inyección de la variable BACKEND_URL sacada del Variable Group correspondiente
+
+          - script: |
+              echo "Generando archivo .env vacío para el empaquetador de Flutter..."
+              touch .env
+            displayName: 'Setup: Inyectar .env Dummy'
+
+
           - script: flutter build web --release --dart-define=API_URL=$(BACKEND_URL)
             displayName: 'CD: Construir Flutter Web Estático'
 
-          # Despliegue Oficial a la CDN de Azure
+
           - task: AzureStaticWebApp@0
             displayName: 'CD: Publicar en Azure SWA'
             inputs:

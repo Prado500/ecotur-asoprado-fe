@@ -23,18 +23,23 @@ steps:
       echo "##vso[task.prependpath]$(pwd)/flutter/bin"
     displayName: 'Instalar Flutter SDK'
 
-  #
+  - script: |
+      echo "Generando archivo .env dinámico para el pipeline CI..."
+      touch .env
+      # Si tus tests requieren que ciertas variables existan para no fallar, 
+      # puedes inyectar valores falsos así:
+      echo "API_URL=http://mock-api.local" >> .env
+      echo "ENVIRONMENT=test" >> .env
+    displayName: 'Setup: Inyectar .env Dummy'
+
   - script: flutter pub get
     displayName: 'Instalar dependencias (pub get)'
 
-  #
   - script: flutter test
     displayName: 'Quality Gate: Ejecutar Pruebas Unitarias'
 
-
   - script: flutter build apk --release
     displayName: 'CI: Construir Instalador Android (APK)'
-
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publicar Artefacto Móvil'
