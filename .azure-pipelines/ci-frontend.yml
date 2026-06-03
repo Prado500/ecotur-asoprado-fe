@@ -16,34 +16,47 @@ pr:
 pool:
   vmImage: 'ubuntu-latest'
 
-steps:
+variables:
+  ${{ if eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/develop') }}:
+    ENTORNO: 'VG-ECOTUR-DEV'
+  ${{ if eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/staging') }}:
+    ENTORNO: 'VG-ECOTUR-STG'
+  ${{ if eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/main') }}:
+    ENTORNO: 'VG-ECOTUR-MAIN'
 
-  - script: |
-      git clone https://github.com/flutter/flutter.git -b stable --depth 1
-      echo "##vso[task.prependpath]$(pwd)/flutter/bin"
-    displayName: 'Instalar Flutter SDK'
+jobs:
+  - job: Compilar_y_Probar_APK
+    displayName: 'Quality Gate y Generación de APK Dinámico'
 
-  - script: |
-      echo "Generando archivo .env dinámico para el pipeline CI..."
-      touch .env
-      # Si tus tests requieren que ciertas variables existan para no fallar, 
-      # puedes inyectar valores falsos así:
-      echo "API_URL=http://mock-api.local" >> .env
-      echo "ENVIRONMENT=test" >> .env
-    displayName: 'Setup: Inyectar .env Dummy'
+    variables:
+      - group: ${{ variables.ENTORNO }}
 
-  - script: flutter pub get
-    displayName: 'Instalar dependencias (pub get)'
+    steps:
+      - script: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1
+          echo "##vso[task.prependpath]$(pwd)/flutter/bin"
+        displayName: 'Instalar Flutter SDK'
 
-  - script: flutter test
-    displayName: 'Quality Gate: Ejecutar Pruebas Unitarias'
+      - script: |
+          echo "Generando archivo .env vacío para el entorno CI..."
+          touch .env
+        displayName: 'Setup: Inyectar .env Dummy'
 
-  - script: flutter build apk --release
-    displayName: 'CI: Construir Instalador Android (APK)'
+      - script: flutter pub get
+        displayName: 'Instalar dependencias'
 
-  - task: PublishBuildArtifacts@1
-    displayName: 'Publicar Artefacto Móvil'
-    inputs:
-      PathtoPublish: 'build/app/outputs/flutter-apk/app-release.apk'
-      ArtifactName: 'ecotur-android-apk'
-      publishLocation: 'Container'
+      - script: flutter test
+        displayName: 'Quality Gate: Ejecutar Pruebas Unitarias'
+
+
+      - script: |
+          echo "Compilando APK conectado al backend: $(DEPLOYED_BACKEND)"
+          flutter build apk --release --dart-define=API_URL=$(DEPLOYED_BACKEND)
+        displayName: 'CI: Construir Instalador Android (APK)'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publicar Artefacto Móvil'
+        inputs:
+          PathtoPublish: 'build/app/outputs/flutter-apk/app-release.apk'
+          ArtifactName: 'ecotur-android-apk'
+          publishLocation: 'Container'
