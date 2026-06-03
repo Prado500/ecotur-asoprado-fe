@@ -28,8 +28,11 @@ jobs:
   - job: Compilar_y_Probar_APK
     displayName: 'Quality Gate y Generación de APK Dinámico'
 
+    condition: and(succeeded(), ne(variables['System.PullRequest.TargetBranch'], ''))
+
     variables:
-      - group: ${{ variables.ENTORNO }}
+      ${{ if ne(variables.ENTORNO, '') }}:
+        - group: ${{ variables.ENTORNO }}
 
     steps:
       - script: |
@@ -47,7 +50,6 @@ jobs:
 
       - script: flutter test
         displayName: 'Quality Gate: Ejecutar Pruebas Unitarias'
-
 
       - script: |
           echo "Compilando APK conectado al backend: $(DEPLOYED_BACKEND)"
