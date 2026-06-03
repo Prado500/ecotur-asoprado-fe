@@ -16,22 +16,26 @@ pr:
 pool:
   vmImage: 'ubuntu-latest'
 
+
 variables:
   ${{ if in(variables['System.PullRequest.TargetBranch'], 'develop', 'refs/heads/develop') }}:
     ENTORNO: 'VG-ECOTUR-DEV'
-  ${{ if in(variables['System.PullRequest.TargetBranch'], 'staging', 'refs/heads/staging') }}:
+  ${{ elseif in(variables['System.PullRequest.TargetBranch'], 'staging', 'refs/heads/staging') }}:
     ENTORNO: 'VG-ECOTUR-STG'
-  ${{ if in(variables['System.PullRequest.TargetBranch'], 'main', 'refs/heads/main') }}:
+  ${{ elseif in(variables['System.PullRequest.TargetBranch'], 'main', 'refs/heads/main') }}:
     ENTORNO: 'VG-ECOTUR-MAIN'
+  ${{ else }}:
+    ENTORNO: ''
 
 jobs:
   - job: Compilar_y_Probar_APK
     displayName: 'Quality Gate y Generación de APK Dinámico'
 
+
     condition: and(succeeded(), ne(variables['System.PullRequest.TargetBranch'], ''))
 
-    variables:
-      ${{ if ne(variables.ENTORNO, '') }}:
+    ${{ if ne(variables.ENTORNO, '') }}:
+      variables:
         - group: ${{ variables.ENTORNO }}
 
     steps:
