@@ -9,6 +9,13 @@ class ApiService {
 
   /// Obtiene la URL base inyectada dinámicamente según el entorno.
   String get baseUrl {
+    const String pipelineUrl = String.fromEnvironment('API_URL');
+
+
+    if (pipelineUrl.isNotEmpty) {
+      return pipelineUrl;
+    }
+
     String url = dotenv.env['API_URL'] ?? 'http://localhost:8000';
 
     if (!kIsWeb && url.contains('localhost')) {

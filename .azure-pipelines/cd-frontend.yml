@@ -46,7 +46,7 @@ stages:
               touch .env
             displayName: 'Setup: Inyectar .env Dummy'
 
-          - script: flutter build web --release --dart-define=API_URL=$(BACKEND_URL)
+          - script: flutter build web --release --dart-define=API_URL=$(DEPLOYED_BACKEND)
             displayName: 'CD: Construir Flutter Web Estático'
 
           - task: AzureStaticWebApp@0

@@ -4,10 +4,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/catalog_screen.dart';
 
 Future<void> main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Aviso: No se pudo cargar el archivo .env físico. "
+        "Se asumirá el uso de variables de entorno inyectadas por compilación (--dart-define).");
+  }
 
   runApp(const EcoturApp());
 }
