@@ -17,11 +17,11 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  ${{ if eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/develop') }}:
+  ${{ if in(variables['System.PullRequest.TargetBranch'], 'develop', 'refs/heads/develop') }}:
     ENTORNO: 'VG-ECOTUR-DEV'
-  ${{ if eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/staging') }}:
+  ${{ if in(variables['System.PullRequest.TargetBranch'], 'staging', 'refs/heads/staging') }}:
     ENTORNO: 'VG-ECOTUR-STG'
-  ${{ if eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/main') }}:
+  ${{ if in(variables['System.PullRequest.TargetBranch'], 'main', 'refs/heads/main') }}:
     ENTORNO: 'VG-ECOTUR-MAIN'
 
 jobs:
