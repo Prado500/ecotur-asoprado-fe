@@ -1,11 +1,34 @@
 import 'package:flutter/material.dart';
 import '../models/tourist_service_model.dart';
 import '../widgets/catalog/image_carousel.dart';
+import '../view_models/details_viewmodel.dart';
 
-class DetailsScreen extends StatelessWidget {
+/// Dumb View displaying the package details.
+/// Listens to [DetailsViewModel] for future booking state management.
+class DetailsScreen extends StatefulWidget {
   final TouristService service;
 
   const DetailsScreen({super.key, required this.service});
+
+  @override
+  State<DetailsScreen> createState() => _DetailsScreenState();
+}
+
+class _DetailsScreenState extends State<DetailsScreen> {
+  late final DetailsViewModel _viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the ViewModel with the passed model entity
+    _viewModel = DetailsViewModel(widget.service);
+  }
+
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,10 +54,7 @@ class DetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // El componente extraído
-            ImageCarousel(imageUrls: service.imageUrls),
-
-            // La información
+            ImageCarousel(imageUrls: _viewModel.service.imageUrls),
             Container(
               transform: Matrix4.translationValues(0.0, -20.0, 0.0),
               decoration: const BoxDecoration(
@@ -50,7 +70,7 @@ class DetailsScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          service.category.toUpperCase(),
+                          _viewModel.service.category.toUpperCase(),
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF006875), letterSpacing: 1.0),
                         ),
                         Row(
@@ -58,15 +78,15 @@ class DetailsScreen extends StatelessWidget {
                             Container(
                               width: 8, height: 8,
                               decoration: BoxDecoration(
-                                  color: service.isAvailable ? const Color(0xFF006C49) : const Color(0xFF6B7A7D),
+                                  color: _viewModel.service.isAvailable ? const Color(0xFF006C49) : const Color(0xFF6B7A7D),
                                   shape: BoxShape.circle
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              service.isAvailable ? 'Disponible Hoy' : 'Próximamente',
+                              _viewModel.service.isAvailable ? 'Disponible Hoy' : 'Próximamente',
                               style: TextStyle(
-                                color: service.isAvailable ? const Color(0xFF006C49) : const Color(0xFF6B7A7D),
+                                color: _viewModel.service.isAvailable ? const Color(0xFF006C49) : const Color(0xFF6B7A7D),
                                 fontSize: 12, fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -76,21 +96,21 @@ class DetailsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      service.name,
+                      _viewModel.service.name,
                       style: const TextStyle(fontFamily: 'Space Grotesk', fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF191C1E), height: 1.1),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Text(
-                          '\$${service.basePrice.toStringAsFixed(0)} COP',
+                          '\$${_viewModel.service.basePrice.toStringAsFixed(0)} COP',
                           style: const TextStyle(fontSize: 24, color: Color(0xFF006875), fontWeight: FontWeight.w900),
                         ),
                         const Spacer(),
                         const Icon(Icons.group_outlined, color: Color(0xFF6B7A7D), size: 20),
                         const SizedBox(width: 4),
                         Text(
-                          'Máx ${service.maxCapacity} pers.',
+                          'Máx ${_viewModel.service.maxCapacity} pers.',
                           style: const TextStyle(color: Color(0xFF6B7A7D), fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -105,7 +125,7 @@ class DetailsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      service.description,
+                      _viewModel.service.description,
                       style: const TextStyle(fontSize: 16, height: 1.6, color: Color(0xFF3B494C)),
                     ),
                     const SizedBox(height: 100),
@@ -126,18 +146,25 @@ class DetailsScreen extends StatelessWidget {
         child: SafeArea(
           child: SizedBox(
             height: 56,
-            child: ElevatedButton(
-              onPressed: service.isAvailable ? () {} : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF006875),
-                disabledBackgroundColor: const Color(0xFFE0E3E5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                elevation: 0,
-              ),
-              child: Text(
-                  service.isAvailable ? 'Reservar Ahora' : 'No Disponible',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)
-              ),
+            child: ListenableBuilder(
+                listenable: _viewModel,
+                builder: (context, child) {
+                  return ElevatedButton(
+                    onPressed: _viewModel.service.isAvailable ? _viewModel.initiateBooking : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF006875),
+                      disabledBackgroundColor: const Color(0xFFE0E3E5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
+                    child: _viewModel.isProcessing
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text(
+                        _viewModel.service.isAvailable ? 'Reservar Ahora' : 'No Disponible',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)
+                    ),
+                  );
+                }
             ),
           ),
         ),

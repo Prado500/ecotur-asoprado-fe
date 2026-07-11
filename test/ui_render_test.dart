@@ -4,65 +4,79 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 
-// Importa tus pantallas y servicios
+// Import application screens
 import 'package:ecotur_app/screens/login_screen.dart';
 import 'package:ecotur_app/screens/catalog_screen.dart';
-import 'package:ecotur_app/services/api_service.dart';
 
-// Importa el archivo autogenerado de Mocks (marcará error hasta correr build_runner)
+// Import domain and state management services
+import 'package:ecotur_app/services/catalog_service.dart';
+import 'package:ecotur_app/services/auth_service.dart';
+import 'package:ecotur_app/services/session_service.dart';
+
+// Import the auto-generated Mocks file.
+// NOTE: This will show a red error in your IDE until you execute the build_runner command.
 import 'ui_render_test.mocks.dart';
 
-// Le decimos a Mockito que necesitamos un clon (Mock) de ApiService
-@GenerateMocks([ApiService])
+// Instruct Mockito to generate mock classes for these specific services.
+@GenerateMocks([CatalogService, AuthService, SessionService])
 void main() {
 
   setUpAll(() {
+    // Inject environment variables to prevent the internal ApiClient from crashing during tests.
     dotenv.loadFromString(envString: '''
 API_URL=http://localhost:8000
     ''');
   });
 
-  group('Compuerta de Calidad Visual (UI Rendering)', () {
+  group('UI Rendering Quality Gate', () {
 
-    // --- PRUEBA 1: LOGIN ---
-    testWidgets('Debe renderizar la pantalla de Login con sus campos críticos', (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(
-        home: LoginScreen(),
+    // --- TEST 1: LOGIN SCREEN ---
+    testWidgets('Should render the Login screen with its critical input fields', (WidgetTester tester) async {
+      // Instantiate the mock services to bypass network and SharedPreferences exceptions.
+      final mockAuthService = MockAuthService();
+      final mockSessionService = MockSessionService();
+
+      // Pump the login widget injecting the mock dependencies.
+      await tester.pumpWidget(MaterialApp(
+        home: LoginScreen(
+          authService: mockAuthService,
+          sessionService: mockSessionService,
+        ),
       ));
 
       await tester.pumpAndSettle();
 
+      // Validate that the critical UI components are painted on the screen.
       expect(find.text('INICIAR SESIÓN'), findsOneWidget);
       expect(find.text('CORREO ELECTRÓNICO'), findsOneWidget);
       expect(find.text('CONTRASEÑA'), findsOneWidget);
       expect(find.byType(Scaffold), findsWidgets);
     });
 
-    // --- PRUEBA 2: CATÁLOGO CON MOCKITO ---
-    testWidgets('Debe renderizar el Catálogo usando un ApiService simulado', (WidgetTester tester) async {
+    // --- TEST 2: CATALOG SCREEN ---
+    testWidgets('Should render the Catalog screen using a mocked CatalogService', (WidgetTester tester) async {
 
-      // 1. Instanciamos el servicio falso (Mock)
-      final mockApiService = MockApiService();
+      // 1. Instantiate the mock domain specialist.
+      final mockCatalogService = MockCatalogService();
 
-      // 2. STUBBING (Programar el clon):
-      // Le decimos que cuando la pantalla llame a fetchServices(),
-      // devuelva inmediatamente una lista vacía en lugar de intentar ir a internet.
-      when(mockApiService.fetchServices()).thenAnswer((_) async => []);
+      // 2. STUBBING (Program the mock's behavior):
+      // Simulate the backend returning an empty list of tourist packages.
+      when(mockCatalogService.fetchServices()).thenAnswer((_) async => []);
 
-      // 3. Inflamos el catálogo inyectando nuestro clon
+      // 3. Pump the catalog widget injecting the mock dependency.
       await tester.pumpWidget(MaterialApp(
-        home: CatalogScreen(apiService: mockApiService),
+        home: CatalogScreen(catalogService: mockCatalogService),
       ));
 
-      // 4. Dejamos que los frames avancen y se procese el FutureBuilder
+      // 4. Advance the frames to allow the ViewModel's Future to resolve.
       await tester.pumpAndSettle();
 
-      // 5. Validamos que la pantalla no explotó y renderizó su estructura principal
+      // 5. Validate that the screen did not crash and rendered its main structure.
       expect(find.byType(Scaffold), findsWidgets);
       expect(find.text('SERVICIOS TURÍSTICOS'), findsOneWidget);
 
-      // 6. Verificamos que la pantalla efectivamente intentó usar nuestro servicio falso
-      verify(mockApiService.fetchServices()).called(1);
+      // 6. Verify that the view effectively commanded the ViewModel to fetch data from the service.
+      verify(mockCatalogService.fetchServices()).called(1);
     });
   });
 }
