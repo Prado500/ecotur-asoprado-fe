@@ -60,30 +60,40 @@ class ApiClient {
       }
     } catch (e) {
       debugPrint('HTTP Client Error: $e');
-      return {'success': false, 'message': 'Network connection failed.'};
+      return {'success': false, 'message': 'Falla de conexión a la red. Verifique su internet.'};
     }
   }
 
   /// Standardizes error responses from the FastAPI backend.
+  /// Intelligently parses both standard HTTPExceptions ('detail') and custom Pydantic handlers ('detalle').
   Map<String, dynamic> _handleApiError(http.Response response) {
     try {
       final data = json.decode(utf8.decode(response.bodyBytes));
-      String errorMessage = 'Server error (Code: ${response.statusCode})';
+      String errorMessage = 'Error en el servidor (Código: ${response.statusCode})';
 
+      // 1. Customized exception handling (Pydantic RequestValidationError)
+      //  Backend JSON response to this kind of exception: {"detalle": [{"raw_field": "...", "message": "..."}]}
+      if (data['detalle'] != null && data['detalle'] is List && (data['detalle'] as List).isNotEmpty) {
+        final firstError = data['detalle'][0] as Map<String, dynamic>;
+        errorMessage = firstError['message']?.toString() ?? 'Error de validación en el formulario.';
+        return {'success': false, 'message': errorMessage};
+      }
+
+      // 2. Standard exception handling (FastAPI HTTPExceptions / IntegrityError)
+      // Backend JSON response to this kind of exception: {"detail": "Su sesión ha expirado..."}
       if (data['detail'] != null) {
-        if (data['detail'] is List && data['detail'].isNotEmpty) {
-          final firstError = data['detail'][0] as Map<String, dynamic>;
-          final locList = firstError['loc'] as List<dynamic>?;
-          final msg = firstError['msg']?.toString() ?? 'Validation error';
-          String fieldName = (locList != null && locList.isNotEmpty) ? locList.last.toString() : 'Field';
-          errorMessage = "$fieldName: $msg";
-        } else if (data['detail'] is String) {
+        if (data['detail'] is String) {
           errorMessage = data['detail'];
+        } else if (data['detail'] is List && (data['detail'] as List).isNotEmpty) {
+          // Fallback if there ever is a native 422 exception code uncaught by both handlers.
+          final firstError = data['detail'][0] as Map<String, dynamic>;
+          errorMessage = firstError['msg']?.toString() ?? 'Error de validación.';
         }
       }
+
       return {'success': false, 'message': errorMessage};
     } catch (_) {
-      return {'success': false, 'message': 'Unexpected server error (Code: ${response.statusCode})'};
+      return {'success': false, 'message': 'Error inesperado del servidor (Código: ${response.statusCode})'};
     }
   }
 }
