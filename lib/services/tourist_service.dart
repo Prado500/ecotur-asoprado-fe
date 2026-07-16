@@ -9,6 +9,7 @@ class TouristService {
   /// Registers a new tourist by dispatching the payload to the backend.
   /// Returns a standardized map containing the operation's success status and message.
   Future<Map<String, dynamic>> registerTourist({
+    required String cedula,
     required String email,
     required String password,
     required String firstName,
@@ -18,6 +19,7 @@ class TouristService {
   }) async {
     try {
       return await _apiClient.post('/usuarios/registro', {
+        'cedula': cedula,
         'email': email,
         'password': password,
         'first_name': firstName,

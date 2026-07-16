@@ -7,6 +7,7 @@ class RegisterViewModel extends ChangeNotifier {
   final TouristService _touristService;
 
   // Form Controllers strictly managed by the ViewModel to prevent memory leaks in the View.
+  final TextEditingController cedulaController = TextEditingController(); // <-- Nuevo Controlador
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
@@ -48,6 +49,7 @@ class RegisterViewModel extends ChangeNotifier {
 
     // 3. Domain Service Execution
     final result = await _touristService.registerTourist(
+      cedula: cedulaController.text.trim(), // <-- Inyectado al servicio
       email: emailController.text.trim(),
       password: passwordController.text.trim(),
       firstName: firstNameController.text.trim(),
@@ -68,20 +70,16 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-  /// Internal helper to update the loading spinner state.
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
   }
 
-  /// Internal helper to broadcast an error message to the View.
   void _setError(String message) {
     _errorMessage = message;
     notifyListeners();
   }
 
-  /// Explicitly clears the error state without triggering a full listener rebuild.
-  /// Crucial for preventing infinite SnackBar loops after the View consumes the error.
   void clearError() {
     _errorMessage = null;
   }
@@ -89,6 +87,7 @@ class RegisterViewModel extends ChangeNotifier {
   /// Gracefully destroys the text controllers when the View is popped from the navigation stack.
   @override
   void dispose() {
+    cedulaController.dispose(); // <-- Seguridad de memoria garantizada
     firstNameController.dispose();
     lastNameController.dispose();
     phoneController.dispose();
