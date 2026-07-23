@@ -133,6 +133,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: 24),
 
+                          // --- FAIL-FAST CLIENT-SIDE VALIDATION FOR CÉDULA ---
+                          CustomInput(
+                            label: 'CÉDULA DE CIUDADANÍA', hint: 'Ej. 1005911792', icon: Icons.badge_outlined,
+                            controller: _viewModel.cedulaController, keyboardType: TextInputType.number,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return 'Requerido';
+                              final cedulaRegex = RegExp(r'^\d{6,10}$');
+                              if (!cedulaRegex.hasMatch(val)) return 'Solo números (6 a 10 dígitos)';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 24),
+
                           CustomInput(
                             label: 'TELÉFONO', hint: 'Ej. 3124273211', icon: Icons.phone_outlined,
                             controller: _viewModel.phoneController, keyboardType: TextInputType.phone,
