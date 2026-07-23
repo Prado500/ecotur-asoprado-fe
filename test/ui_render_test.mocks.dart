@@ -3,12 +3,15 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i4;
+import 'dart:async' as _i3;
+import 'dart:ui' as _i8;
 
-import 'package:ecotur_app/models/tourist_service_model.dart' as _i5;
-import 'package:ecotur_app/services/api_service.dart' as _i2;
+import 'package:ecotur_app/models/tourist_service_model.dart' as _i4;
+import 'package:ecotur_app/services/auth_service.dart' as _i5;
+import 'package:ecotur_app/services/catalog_service.dart' as _i2;
+import 'package:ecotur_app/services/session_service.dart' as _i6;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i3;
+import 'package:mockito/src/dummies.dart' as _i7;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -25,44 +28,135 @@ import 'package:mockito/src/dummies.dart' as _i3;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-/// A class which mocks [ApiService].
+/// A class which mocks [CatalogService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockApiService extends _i1.Mock implements _i2.ApiService {
-  MockApiService() {
+class MockCatalogService extends _i1.Mock implements _i2.CatalogService {
+  MockCatalogService() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  String get baseUrl =>
+  _i3.Future<List<_i4.TouristService>> fetchServices() =>
       (super.noSuchMethod(
-            Invocation.getter(#baseUrl),
-            returnValue: _i3.dummyValue<String>(
+            Invocation.method(#fetchServices, []),
+            returnValue: _i3.Future<List<_i4.TouristService>>.value(
+              <_i4.TouristService>[],
+            ),
+          )
+          as _i3.Future<List<_i4.TouristService>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> createService(
+    Map<String, dynamic>? serviceData,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#createService, [serviceData]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+}
+
+/// A class which mocks [AuthService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockAuthService extends _i1.Mock implements _i5.AuthService {
+  MockAuthService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i3.Future<Map<String, dynamic>> login(String? email, String? password) =>
+      (super.noSuchMethod(
+            Invocation.method(#login, [email, password]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+}
+
+/// A class which mocks [SessionService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockSessionService extends _i1.Mock implements _i6.SessionService {
+  MockSessionService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  bool get isAuthenticated =>
+      (super.noSuchMethod(
+            Invocation.getter(#isAuthenticated),
+            returnValue: false,
+          )
+          as bool);
+
+  @override
+  String get userRole =>
+      (super.noSuchMethod(
+            Invocation.getter(#userRole),
+            returnValue: _i7.dummyValue<String>(
               this,
-              Invocation.getter(#baseUrl),
+              Invocation.getter(#userRole),
             ),
           )
           as String);
 
   @override
-  _i4.Future<List<_i5.TouristService>> fetchServices() =>
-      (super.noSuchMethod(
-            Invocation.method(#fetchServices, []),
-            returnValue: _i4.Future<List<_i5.TouristService>>.value(
-              <_i5.TouristService>[],
-            ),
-          )
-          as _i4.Future<List<_i5.TouristService>>);
+  bool get hasListeners =>
+      (super.noSuchMethod(Invocation.getter(#hasListeners), returnValue: false)
+          as bool);
 
   @override
-  _i4.Future<Map<String, dynamic>> createService(
-    Map<String, dynamic>? serviceData,
-  ) =>
+  _i3.Future<void> establishSession(String? token) =>
       (super.noSuchMethod(
-            Invocation.method(#createService, [serviceData]),
-            returnValue: _i4.Future<Map<String, dynamic>>.value(
-              <String, dynamic>{},
-            ),
+            Invocation.method(#establishSession, [token]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i4.Future<Map<String, dynamic>>);
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> destroySession() =>
+      (super.noSuchMethod(
+            Invocation.method(#destroySession, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<bool> checkExistingSession() =>
+      (super.noSuchMethod(
+            Invocation.method(#checkExistingSession, []),
+            returnValue: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
+
+  @override
+  void addListener(_i8.VoidCallback? listener) => super.noSuchMethod(
+    Invocation.method(#addListener, [listener]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void removeListener(_i8.VoidCallback? listener) => super.noSuchMethod(
+    Invocation.method(#removeListener, [listener]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void notifyListeners() => super.noSuchMethod(
+    Invocation.method(#notifyListeners, []),
+    returnValueForMissingStub: null,
+  );
 }

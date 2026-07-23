@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/session_service.dart';
+import '../view_models/login_viewmodel.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/common/custom_input.dart';
 import '../widgets/common/diagonal_painter.dart';
@@ -7,68 +9,68 @@ import 'admin_dashboard_screen.dart';
 import 'catalog_screen.dart';
 import 'register_screen.dart';
 
+/// Dumb View rendering the Login interface.
+/// It strictly listens to the [LoginViewModel] and handles navigation routing based on roles.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AuthService? authService;
+  final SessionService? sessionService;
+
+  const LoginScreen({super.key, this.authService, this.sessionService});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _authService = AuthService();
-  bool _isLoading = false;
+  late final LoginViewModel _viewModel;
 
-  void _handleLogin() async {
-    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
-      _showError('Por favor, ingresa tu correo y contraseña.');
-      return;
-    }
+  @override
+  void initState() {
+    super.initState();
+    // Dependency Injection: Initialize the ViewModel with both required services
+    _viewModel = LoginViewModel(
+      widget.authService ?? AuthService(),
+      widget.sessionService ?? SessionService(),
+    );
 
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(_emailController.text.trim())) {
-      _showError('Por favor, ingresa un correo electrónico válido (ej: usuario@correo.com).');
-      return;
-    }
+    // Attach listener for UI side-effects (e.g., SnackBars)
+    _viewModel.addListener(_onViewModelChange);
+  }
 
-    if (_passwordController.text.length < 8) {
-      _showError('La contraseña debe tener al menos 8 caracteres.');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final result = await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-
-      setState(() => _isLoading = false);
-
-      if (result['success']) {
-        if (!mounted) return;
-        final String role = result['role'];
-
-        if (role == 'admin') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
-        } else {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CatalogScreen()));
-        }
-      } else {
-        if (!mounted) return;
-        _showError(result['message']);
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (!mounted) return;
-      _showError('Error de conexión al servidor.');
+  /// Intercepts ViewModel broadcasts to display errors safely using the BuildContext.
+  void _onViewModelChange() {
+    if (_viewModel.errorMessage != null) {
+      UIHelpers.showSnackBar(context, _viewModel.errorMessage!, isError: true);
+      // Consume the error immediately to prevent infinite SnackBar loops
+      _viewModel.clearError();
     }
   }
 
-  void _showError(String message) {
-    UIHelpers.showSnackBar(context, message, isError: true);
+  @override
+  void dispose() {
+    // Clean up observers and ViewModel resources
+    _viewModel.removeListener(_onViewModelChange);
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  /// Commands the ViewModel to perform the login and handles routing upon success.
+  void _handleLoginSubmission() async {
+    // The ViewModel processes the network transaction and session storage.
+    // It returns the user role if successful, or null if it fails.
+    final role = await _viewModel.performLogin();
+
+    // Security check to prevent navigation on unmounted contexts
+    if (!mounted) return;
+
+    if (role != null) {
+      // Route the user based on their specific role (RBAC)
+      if (role == 'admin') {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
+      } else {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CatalogScreen()));
+      }
+    }
   }
 
   @override
@@ -121,14 +123,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         Text('Ingresa tus datos para acceder a tu cuenta.', style: TextStyle(color: Colors.grey[600], fontSize: 14), textAlign: TextAlign.center),
                         const SizedBox(height: 32),
 
+                        // Form Inputs bound to the ViewModel's controllers
                         CustomInput(
                           label: 'CORREO ELECTRÓNICO', hint: 'tu@correo.com', icon: Icons.email_outlined,
-                          controller: _emailController, keyboardType: TextInputType.emailAddress,
+                          controller: _viewModel.emailController, keyboardType: TextInputType.emailAddress,
                         ),
                         const SizedBox(height: 24),
                         CustomInput(
                           label: 'CONTRASEÑA', hint: '••••••••', icon: Icons.lock_outline,
-                          controller: _passwordController, isPassword: true,
+                          controller: _viewModel.passwordController, isPassword: true,
                         ),
 
                         Align(
@@ -137,15 +140,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        SizedBox(
-                          width: double.infinity, height: 48,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006875), elevation: 0),
-                            child: _isLoading
-                                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text('Iniciar Sesión', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)), SizedBox(width: 8), Icon(Icons.arrow_forward, size: 18)]),
-                          ),
+                        // --- REACTIVE SUBMIT BUTTON BOUND TO VIEWMODEL ---
+                        ListenableBuilder(
+                            listenable: _viewModel,
+                            builder: (context, child) {
+                              return SizedBox(
+                                width: double.infinity, height: 48,
+                                child: ElevatedButton(
+                                  onPressed: _viewModel.isLoading ? null : _handleLoginSubmission,
+                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006875), elevation: 0),
+                                  child: _viewModel.isLoading
+                                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                      : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text('Iniciar Sesión', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.arrow_forward, size: 18)
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
                         ),
                         const SizedBox(height: 12),
 

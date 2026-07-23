@@ -1,20 +1,52 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../services/session_service.dart';
+import '../services/tourist_service.dart';
+import '../view_models/profile_viewmodel.dart';
 import 'login_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+/// Dumb View rendering the user profile.
+/// Delegates all session and data actions to the [ProfileViewModel].
+class ProfileScreen extends StatefulWidget {
+  final SessionService? sessionService;
+  final TouristService? touristService;
 
-  void _handleLogout(BuildContext context) async {
-    final authService = AuthService();
+  const ProfileScreen({super.key, this.sessionService, this.touristService});
 
-    // Delegamos la lógica de negocio al servicio correspondiente
-    await authService.logout();
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
 
-    // Verificación de seguridad para evitar Memory Leaks
-    if (!context.mounted) return;
+class _ProfileScreenState extends State<ProfileScreen> {
+  late final ProfileViewModel _viewModel;
 
-    // Destruimos el historial de navegación y volvemos al Login
+  @override
+  void initState() {
+    super.initState();
+    // Dependency Injection: Initialize the ViewModel with the Wide State service and Domain service
+    _viewModel = ProfileViewModel(
+      widget.sessionService ?? SessionService(),
+      widget.touristService ?? TouristService(),
+    );
+
+    // Fire-and-forget invocation for future profile data hydration
+    _viewModel.loadUserProfile();
+  }
+
+  @override
+  void dispose() {
+    // Release resources safely when the view is popped
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  void _handleLogout() async {
+    // Delegate the business logic to the ViewModel
+    await _viewModel.performLogout();
+
+    // Security check to prevent Context exceptions
+    if (!mounted) return;
+
+    // Purge the navigation stack and redirect to Login
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -40,7 +72,7 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            // --- TARJETA DE USUARIO ---
+            // --- USER CARD ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(32),
@@ -74,12 +106,12 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // --- BOTÓN CERRAR SESIÓN ---
+            // --- LOGOUT BUTTON ---
             SizedBox(
               width: double.infinity,
               height: 56,
               child: OutlinedButton.icon(
-                onPressed: () => _handleLogout(context),
+                onPressed: _handleLogout,
                 icon: const Icon(Icons.logout, color: Color(0xFFBA1A1A)),
                 label: const Text('Cerrar Sesión', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFBA1A1A))),
                 style: OutlinedButton.styleFrom(

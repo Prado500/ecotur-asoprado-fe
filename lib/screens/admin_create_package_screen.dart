@@ -1,92 +1,54 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import '../services/catalog_service.dart';
+import '../view_models/admin_create_package_viewmodel.dart';
 import '../widgets/admin/admin_section_card.dart';
 import '../widgets/admin/admin_form_field.dart';
 import '../utils/ui_helpers.dart';
 
+/// Dumb View rendering the administrative package creation layout.
+/// Strictly observes [AdminCreatePackageViewModel] for dynamic rebuilds.
 class AdminCreatePackageScreen extends StatefulWidget {
-  const AdminCreatePackageScreen({super.key});
+  final CatalogService? catalogService;
+
+  const AdminCreatePackageScreen({super.key, this.catalogService});
 
   @override
-  _AdminCreatePackageScreenState createState() => _AdminCreatePackageScreenState();
+  State<AdminCreatePackageScreen> createState() => _AdminCreatePackageScreenState();
 }
 
 class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _capacityController = TextEditingController();
-  final List<TextEditingController> _imageUrlsControllers = [];
-
-  String _selectedCategory = 'metalmecanico';
-  bool _isAvailable = true;
-  bool _isLoading = false;
-  late final ApiService _apiService;
+  late final AdminCreatePackageViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    _apiService = ApiService();
+    _viewModel = AdminCreatePackageViewModel(widget.catalogService ?? CatalogService());
+    _viewModel.addListener(_onViewModelChange);
+  }
+
+  void _onViewModelChange() {
+    if (_viewModel.errorMessage != null) {
+      UIHelpers.showSnackBar(context, _viewModel.errorMessage!, isError: true);
+      _viewModel.clearError();
+    }
+
+    if (_viewModel.isSuccess) {
+      UIHelpers.showSnackBar(context, '¡Paquete creado exitosamente!', isError: false);
+      if (mounted) Navigator.pop(context);
+    }
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _priceController.dispose();
-    _capacityController.dispose();
-    for (var controller in _imageUrlsControllers) {
-      controller.dispose();
-    }
+    _viewModel.removeListener(_onViewModelChange);
+    _viewModel.dispose();
     super.dispose();
   }
 
-  void _savePackage() async {
+  void _handleSaveSubmission() {
     if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    List<String> urlsList = _imageUrlsControllers
-        .map((controller) => controller.text.trim())
-        .where((text) => text.isNotEmpty)
-        .toList();
-
-    final packageData = {
-      "name": _nameController.text.trim(),
-      "description": _descriptionController.text.trim(),
-      "category": _selectedCategory,
-      "base_price": double.tryParse(_priceController.text) ?? 0.0,
-      "max_capacity": int.tryParse(_capacityController.text) ?? 1,
-      "is_available": _isAvailable,
-      "image_urls": urlsList,
-    };
-
-    final result = await _apiService.createService(packageData);
-
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-
-    if (result['success']) {
-      UIHelpers.showSnackBar(context, '¡Paquete creado exitosamente!', isError: false);
-      Navigator.pop(context);
-    } else {
-      UIHelpers.showSnackBar(context, result['message'], isError: true);
-    }
-  }
-
-  void _addUrlField() {
-    setState(() {
-      _imageUrlsControllers.add(TextEditingController());
-    });
-  }
-
-  void _removeUrlField(int index) {
-    setState(() {
-      _imageUrlsControllers[index].dispose();
-      _imageUrlsControllers.removeAt(index);
-    });
+    _viewModel.savePackage();
   }
 
   @override
@@ -115,7 +77,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                     AdminFormField(
                       label: 'NOMBRE DEL PAQUETE',
                       hint: 'Ej. Ruta de la Cascada',
-                      controller: _nameController,
+                      controller: _viewModel.nameController,
                       validator: (value) {
                         if (value == null || value.trim().length < 4) {
                           return 'El nombre debe ser más descriptivo (mín. 4 letras)';
@@ -128,25 +90,30 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                       padding: EdgeInsets.only(bottom: 8.0),
                       child: Text('CATEGORÍA', style: TextStyle(fontSize: 12, color: Color(0xFF3B494C), fontWeight: FontWeight.bold)),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(border: Border.all(color: const Color(0xFFBAC9CC)), borderRadius: BorderRadius.circular(4)),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: _selectedCategory,
-                          items: ['agroturismo', 'recreacional', 'metalmecanico', 'otro'].map((String value) {
-                            return DropdownMenuItem<String>(value: value, child: Text(value.toUpperCase()));
-                          }).toList(),
-                          onChanged: (val) => setState(() => _selectedCategory = val!),
-                        ),
-                      ),
+                    ListenableBuilder(
+                        listenable: _viewModel,
+                        builder: (context, child) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(border: Border.all(color: const Color(0xFFBAC9CC)), borderRadius: BorderRadius.circular(4)),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: _viewModel.selectedCategory,
+                                items: ['agroturismo', 'recreacional', 'metalmecanico', 'otro'].map((String value) {
+                                  return DropdownMenuItem<String>(value: value, child: Text(value.toUpperCase()));
+                                }).toList(),
+                                onChanged: (val) => _viewModel.setCategory(val!),
+                              ),
+                            ),
+                          );
+                        }
                     ),
                     const SizedBox(height: 16),
                     AdminFormField(
                       label: 'DESCRIPCIÓN DEL PAQUETE',
                       hint: 'Detalle exhaustivo...',
-                      controller: _descriptionController,
+                      controller: _viewModel.descriptionController,
                       maxLines: 4,
                       validator: (value) {
                         if (value == null || value.trim().length < 20) {
@@ -171,10 +138,15 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                               ],
                             ),
                           ),
-                          Switch(
-                            value: _isAvailable,
-                            activeColor: const Color(0xFF006C49),
-                            onChanged: (val) => setState(() => _isAvailable = val),
+                          ListenableBuilder(
+                              listenable: _viewModel,
+                              builder: (context, child) {
+                                return Switch(
+                                  value: _viewModel.isAvailable,
+                                  activeColor: const Color(0xFF006C49),
+                                  onChanged: (val) => _viewModel.setAvailability(val),
+                                );
+                              }
                           ),
                         ],
                       ),
@@ -189,7 +161,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                 content: AdminFormField(
                   label: 'CAPACIDAD MÁX.',
                   hint: 'Ej. 15',
-                  controller: _capacityController,
+                  controller: _viewModel.capacityController,
                   isNumeric: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Requerido';
@@ -209,7 +181,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                     AdminFormField(
                       label: 'PRECIO BASE (COP)',
                       hint: '\$ 0.00',
-                      controller: _priceController,
+                      controller: _viewModel.priceController,
                       isNumeric: true,
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'Requerido';
@@ -223,33 +195,44 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                       padding: EdgeInsets.only(bottom: 8.0),
                       child: Text('ENLACES DE IMÁGENES PÚBLICAS', style: TextStyle(fontSize: 12, color: Color(0xFF3B494C), fontWeight: FontWeight.bold)),
                     ),
-                    ..._imageUrlsControllers.asMap().entries.map((entry) {
-                      int index = entry.key;
-                      TextEditingController controller = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: AdminFormField(
-                                label: '',
-                                hint: 'https://ejemplo.com/foto.jpg',
-                                controller: controller,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A)),
-                              onPressed: () => _removeUrlField(index),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+
+                    // --- REACTIVE DYNAMIC LIST BUILDER ---
+                    ListenableBuilder(
+                        listenable: _viewModel,
+                        builder: (context, child) {
+                          return Column(
+                            children: [
+                              ..._viewModel.imageUrlsControllers.asMap().entries.map((entry) {
+                                int index = entry.key;
+                                TextEditingController controller = entry.value;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: AdminFormField(
+                                          label: '',
+                                          hint: 'https://ejemplo.com/foto.jpg',
+                                          controller: controller,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A)),
+                                        onPressed: () => _viewModel.removeUrlField(index),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          );
+                        }
+                    ),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
-                      onPressed: _addUrlField,
+                      onPressed: _viewModel.addUrlField,
                       icon: const Icon(Icons.add_link, color: Color(0xFF006C49)),
                       label: const Text('AGREGAR URL DE IMAGEN', style: TextStyle(color: Color(0xFF006C49), fontWeight: FontWeight.bold)),
                       style: OutlinedButton.styleFrom(
@@ -285,11 +268,16 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _savePackage,
-                  icon: _isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white)) : const Icon(Icons.save, color: Colors.white, size: 18),
-                  label: const Text('GUARDAR', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006C49), padding: const EdgeInsets.symmetric(vertical: 16)),
+                child: ListenableBuilder(
+                    listenable: _viewModel,
+                    builder: (context, child) {
+                      return ElevatedButton.icon(
+                        onPressed: _viewModel.isLoading ? null : _handleSaveSubmission,
+                        icon: _viewModel.isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white)) : const Icon(Icons.save, color: Colors.white, size: 18),
+                        label: const Text('GUARDAR', style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006C49), padding: const EdgeInsets.symmetric(vertical: 16)),
+                      );
+                    }
                 ),
               ),
             ],

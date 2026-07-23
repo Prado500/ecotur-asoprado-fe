@@ -2,11 +2,46 @@ import 'package:flutter/material.dart';
 import '../widgets/common/grid_pattern_painter.dart';
 import '../widgets/admin/stat_card.dart';
 import '../widgets/admin/admin_bottom_nav_bar.dart';
+import '../view_models/admin_dashboard_viewmodel.dart';
+import '../utils/ui_helpers.dart';
 import 'catalog_screen.dart';
 import 'admin_create_package_screen.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+/// Dumb View rendering the Administrative Dashboard.
+/// Observes the [AdminDashboardViewModel] to reactively display KPIs.
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  late final AdminDashboardViewModel _viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = AdminDashboardViewModel();
+    _viewModel.addListener(_onViewModelChange);
+
+    // Trigger initial data load
+    _viewModel.loadDashboardStats();
+  }
+
+  void _onViewModelChange() {
+    if (_viewModel.errorMessage != null) {
+      UIHelpers.showSnackBar(context, _viewModel.errorMessage!, isError: true);
+      _viewModel.clearError();
+    }
+  }
+
+  @override
+  void dispose() {
+    _viewModel.removeListener(_onViewModelChange);
+    _viewModel.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,24 +116,41 @@ class AdminDashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  const StatCard(
-                    title: 'PAQUETES ACTIVOS',
-                    value: '124',
-                    status: '+12%',
-                    icon: Icons.inventory_2_outlined,
-                  ),
-                  const StatCard(
-                    title: 'RESERVAS PENDIENTES',
-                    value: '38',
-                    status: 'Requiere acción',
-                    icon: Icons.confirmation_number_outlined,
-                    isPositive: false,
-                  ),
-                  const StatCard(
-                    title: 'CONVERSIÓN',
-                    value: '24%',
-                    status: 'Óptimo',
-                    icon: Icons.trending_up,
+                  // --- REACTIVE KPI CARDS BOUND TO VIEWMODEL ---
+                  ListenableBuilder(
+                      listenable: _viewModel,
+                      builder: (context, child) {
+                        if (_viewModel.isLoading) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: CircularProgressIndicator(color: Color(0xFF006875)),
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            StatCard(
+                              title: 'PAQUETES ACTIVOS',
+                              value: _viewModel.activePackages,
+                              status: '+12%',
+                              icon: Icons.inventory_2_outlined,
+                            ),
+                            StatCard(
+                              title: 'RESERVAS PENDIENTES',
+                              value: _viewModel.pendingReservations,
+                              status: 'Requiere acción',
+                              icon: Icons.confirmation_number_outlined,
+                              isPositive: false,
+                            ),
+                            StatCard(
+                              title: 'CONVERSIÓN',
+                              value: _viewModel.conversionRate,
+                              status: 'Óptimo',
+                              icon: Icons.trending_up,
+                            ),
+                          ],
+                        );
+                      }
                   ),
                   const SizedBox(height: 80),
                 ],
@@ -106,7 +158,6 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
           ),
 
-          // --- AQUÍ INYECTAMOS EL NUEVO COMPONENTE ---
           const Positioned(
             bottom: 0, left: 0, right: 0,
             child: AdminBottomNavBar(currentIndex: 0),

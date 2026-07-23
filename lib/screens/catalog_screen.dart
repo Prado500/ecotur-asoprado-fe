@@ -1,28 +1,39 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../models/tourist_service_model.dart';
+import '../services/catalog_service.dart';
+import '../view_models/catalog_viewmodel.dart';
 import '../widgets/common/grid_pattern_painter.dart';
 import '../widgets/common/custom_bottom_nav_bar.dart';
 import '../widgets/catalog/tourist_card.dart';
 
+/// Dumb View representing the tourist catalog.
+/// It completely delegates state tracking and data fetching to its [CatalogViewModel].
 class CatalogScreen extends StatefulWidget {
-  final ApiService? apiService;
+  final CatalogService? catalogService;
 
-  const CatalogScreen({super.key, this.apiService});
+  const CatalogScreen({super.key, this.catalogService});
 
   @override
   _CatalogScreenState createState() => _CatalogScreenState();
 }
 
 class _CatalogScreenState extends State<CatalogScreen> {
-  late Future<List<TouristService>> futureServices;
-  late final ApiService _apiService;
+  late final CatalogViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    _apiService = widget.apiService ?? ApiService();
-    futureServices = _apiService.fetchServices();
+    // Resolving dependencies symmetrically through the designated layers
+    final service = widget.catalogService ?? CatalogService();
+    _viewModel = CatalogViewModel(service);
+
+    // Fire-and-forget invocation decoupled from full view rendering pipelines
+    _viewModel.loadCatalog();
+  }
+
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
   }
 
   @override
@@ -57,24 +68,27 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ),
                 ),
                 Expanded(
-                  child: FutureBuilder<List<TouristService>>(
-                    future: futureServices,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                  // --- REACTIVE PRESENTATION BINDING ---
+                  child: ListenableBuilder(
+                    listenable: _viewModel,
+                    builder: (context, child) {
+                      if (_viewModel.isLoading) {
                         return const Center(child: CircularProgressIndicator(color: Color(0xFF006875)));
-                      } else if (snapshot.hasError) {
-                        return _buildErrorState(snapshot.error.toString());
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      }
+
+                      if (_viewModel.errorMessage != null) {
+                        return _buildErrorState(_viewModel.errorMessage!);
+                      }
+
+                      if (_viewModel.services.isEmpty) {
                         return const Center(child: Text('Aún no hay paquetes disponibles.'));
                       }
 
-                      List<TouristService> services = snapshot.data!;
-
                       return ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                        itemCount: services.length,
+                        itemCount: _viewModel.services.length,
                         itemBuilder: (context, index) {
-                          return TouristCard(service: services[index]);
+                          return TouristCard(service: _viewModel.services[index]);
                         },
                       );
                     },
@@ -128,13 +142,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
             const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
             const SizedBox(height: 16),
             Text(
-              errorText.replaceAll('Exception: ', ''),
+              errorText,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Color(0xFF3B494C)),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => setState(() => futureServices = _apiService.fetchServices()),
+              onPressed: () => _viewModel.loadCatalog(),
               child: const Text('Reintentar'),
             )
           ],
