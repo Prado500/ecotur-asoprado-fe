@@ -118,7 +118,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: CustomInput(
                                   label: 'NOMBRE(S)', hint: 'Ej. Juan', icon: Icons.person_outline,
                                   controller: _viewModel.firstNameController,
-                                  validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
+                                  validator: (val) {
+                                    if (val == null || val.trim().isEmpty) return 'Requerido';
+                                    if (val.trim().length < 2) return 'Mínimo 2 letras';
+                                    final nameRegex = RegExp(r'^[A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+(?:\s[A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+)*$');
+                                    if (!nameRegex.hasMatch(val.trim())) return 'Solo letras sin espacios extra';
+                                    return null;
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -126,21 +132,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: CustomInput(
                                   label: 'APELLIDO(S)', hint: 'Ej. Pérez', icon: Icons.badge_outlined,
                                   controller: _viewModel.lastNameController,
-                                  validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
+                                  validator: (val) {
+                                    if (val == null || val.trim().isEmpty) return 'Requerido';
+                                    if (val.trim().length < 2) return 'Mínimo 2 letras';
+                                    final nameRegex = RegExp(r'^[A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+(?:\s[A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+)*$');
+                                    if (!nameRegex.hasMatch(val.trim())) return 'Solo letras sin espacios extra';
+                                    return null;
+                                  },
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 24),
 
-                          // --- FAIL-FAST CLIENT-SIDE VALIDATION FOR CÉDULA ---
                           CustomInput(
                             label: 'CÉDULA DE CIUDADANÍA', hint: 'Ej. 1005911792', icon: Icons.badge_outlined,
                             controller: _viewModel.cedulaController, keyboardType: TextInputType.number,
                             validator: (val) {
-                              if (val == null || val.isEmpty) return 'Requerido';
+                              if (val == null || val.trim().isEmpty) return 'Requerido';
                               final cedulaRegex = RegExp(r'^\d{6,10}$');
-                              if (!cedulaRegex.hasMatch(val)) return 'Solo números (6 a 10 dígitos)';
+                              if (!cedulaRegex.hasMatch(val.trim())) return 'Solo numérico (6 a 10 dígitos)';
                               return null;
                             },
                           ),
@@ -149,7 +160,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           CustomInput(
                             label: 'TELÉFONO', hint: 'Ej. 3124273211', icon: Icons.phone_outlined,
                             controller: _viewModel.phoneController, keyboardType: TextInputType.phone,
-                            validator: (val) => val == null || val.length < 7 ? 'Teléfono inválido' : null,
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) return 'Requerido';
+                              final phoneRegex = RegExp(r'^3\d{9}$');
+                              if (!phoneRegex.hasMatch(val.trim())) return 'Debe iniciar con 3 y tener 10 dígitos';
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 24),
 
@@ -157,9 +173,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             label: 'CORREO ELECTRÓNICO', hint: 'tu@email.com', icon: Icons.email_outlined,
                             controller: _viewModel.emailController, keyboardType: TextInputType.emailAddress,
                             validator: (val) {
-                              if (val == null || val.isEmpty) return 'Requerido';
+                              if (val == null || val.trim().isEmpty) return 'Requerido';
                               final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                              if (!emailRegex.hasMatch(val)) return 'Correo inválido';
+                              if (!emailRegex.hasMatch(val.trim())) return 'Correo inválido';
                               return null;
                             },
                           ),
@@ -168,7 +184,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           CustomInput(
                             label: 'DEFINIR CONTRASEÑA', hint: 'Crea una contraseña', icon: Icons.lock_outline,
                             controller: _viewModel.passwordController, isPassword: true,
-                            validator: (val) => val == null || val.length < 8 ? 'Mínimo 8 caracteres' : null,
+                            validator: (val) {
+                              if (val == null || val.length < 8) return 'Mínimo 8 caracteres';
+                              if (!val.contains(RegExp(r'[A-Z]'))) return 'Debe tener al menos una mayúscula';
+                              if (!val.contains(RegExp(r'[a-z]'))) return 'Debe tener al menos una minúscula';
+                              if (!val.contains(RegExp(r'[0-9]'))) return 'Debe tener al menos un número';
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 24),
 
