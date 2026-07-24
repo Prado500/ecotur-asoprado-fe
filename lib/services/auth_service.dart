@@ -20,4 +20,15 @@ class AuthService {
       return {'success': false, 'message': 'Unexpected network error during login.'};
     }
   }
+
+  /// Executes the email verification network request using the provided JWT token.
+  Future<Map<String, dynamic>> verifyEmail(String token) async {
+    try {
+      return await _apiClient.get('/usuarios/verificar-email?token=$token');
+    } catch (e) {
+      debugPrint('CRITICAL ERROR IN AUTH SERVICE (verifyEmail): $e');
+      return {'success': false, 'message': 'Unexpected network error during verification.'};
+    }
+  }
+
 }

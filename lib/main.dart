@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'screens/verification_screen.dart';
 import 'screens/catalog_screen.dart';
 
 Future<void> main() async {
@@ -33,7 +34,7 @@ class EcoturApp extends StatelessWidget {
           surface: Color(0xFFF7F9FB),
           error: Color(0xFFBA1A1A),
         ),
-        fontFamily: 'Inter', // Fuente por defecto para cuerpos de texto
+        fontFamily: 'Inter',
         textTheme: const TextTheme(
           displayLarge: TextStyle(fontFamily: 'Space Grotesk', fontSize: 48, fontWeight: FontWeight.bold, color: Color(0xFF191C1E)),
           headlineMedium: TextStyle(fontFamily: 'Space Grotesk', fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF191C1E)),
@@ -54,8 +55,27 @@ class EcoturApp extends StatelessWidget {
           ),
         ),
       ),
-      // Arrancamos siempre en el Login
-      home: const LoginScreen(),
+
+
+      initialRoute: '/',
+      onGenerateRoute: (settings) {
+        // Parsing of incoming URL
+        final uri = Uri.parse(settings.name ?? '');
+
+        // Identification of user´s origin path (verification screen is only triggered if the user comes from the e-mail verification link)
+        if (uri.path == '/usuarios/verificar-email') {
+          final token = uri.queryParameters['token'];
+
+          if (token != null && token.isNotEmpty) {
+            return MaterialPageRoute(
+              builder: (context) => VerificationScreen(token: token),
+            );
+          }
+        }
+
+        // Default Route (Fallback)
+        return MaterialPageRoute(builder: (context) => const LoginScreen());
+      },
     );
   }
 }
