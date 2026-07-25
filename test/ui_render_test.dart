@@ -1,3 +1,4 @@
+import 'package:ecotur_app/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -77,6 +78,25 @@ API_URL=http://localhost:8000
 
       // 6. Verify that the view effectively commanded the ViewModel to fetch data from the service.
       verify(mockCatalogService.fetchServices()).called(1);
+    });
+
+    // --- TEST 3: VERIFICATION SCREEN ---
+    testWidgets('Should render the Verification screen and its initial state', (WidgetTester tester) async {
+      final mockAuthService = MockAuthService();
+
+      await tester.pumpWidget(MaterialApp(
+        home: VerificationScreen(
+            token: "dummy_jwt_token",
+            authService: mockAuthService
+        ),
+      ));
+
+      await tester.pumpAndSettle();
+
+      // Validate core UI components
+      expect(find.text('VERIFICACIÓN DE SEGURIDAD'), findsOneWidget);
+      expect(find.text('Verificar mi Cuenta'), findsOneWidget);
+      expect(find.byType(ElevatedButton), findsOneWidget);
     });
   });
 }

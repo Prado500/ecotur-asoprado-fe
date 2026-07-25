@@ -38,7 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     if (_viewModel.isSuccess) {
-      UIHelpers.showSnackBar(context, '¡Cuenta creada exitosamente! Ahora inicia sesión.', isError: false);
+      UIHelpers.showSnackBar(context, '¡Cuenta creada exitosamente! Revise su correo electrónico e inicie sesión.', isError: false);
       if (mounted) Navigator.pop(context);
     }
   }
