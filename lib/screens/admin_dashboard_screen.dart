@@ -1,3 +1,4 @@
+import 'package:ecotur_app/screens/admin_kanban_screen.dart';
 import 'package:flutter/material.dart';
 import '../services/tourist_service.dart';
 import '../widgets/admin/admin_bottom_nav_bar.dart';
@@ -170,10 +171,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           alignment: WrapAlignment.center,
                           children: [
                             _buildActionCard('Administrar\npaquetes', Icons.inventory_2_outlined, () {
-                              // TODO: Navigate to Kanban Screen
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminKanbanScreen(entityType: 'paquetes')));
                             }),
                             _buildActionCard('Administrar\nusuarios', Icons.people_outline, () {
-                              // TODO: Navigate to User Management
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminKanbanScreen(entityType: 'usuarios')));
                             }),
                             _buildActionCard('Opciones\nAdicionales', Icons.settings_outlined, () {
                               Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
