@@ -42,7 +42,7 @@ class AdminBottomNavBar extends StatelessWidget {
         children: [
           _buildAdminNavItem(Icons.home, 'INICIO', 0),
           _buildAdminNavItem(Icons.inventory_2_outlined, 'PAQUETES', 1),
-          _buildAdminNavItem(Icons.add_circle_outline, 'CREAR', 2),
+          _buildAdminNavItem(Icons.people_outline, 'USUARIOS', 2),
           _buildAdminNavItem(Icons.settings_outlined, 'AJUSTES', 3),
         ],
       ),

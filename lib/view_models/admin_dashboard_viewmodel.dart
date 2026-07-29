@@ -1,41 +1,39 @@
 import 'package:flutter/material.dart';
+import '../services/tourist_service.dart';
 
-/// ViewModel responsible for orchestrating the Admin Dashboard state.
-/// Prepares the presentation layer for future asynchronous KPI fetching.
+/// ViewModel orchestrating the Admin Dashboard state.
+/// Strictly isolates the profile hydration logic from the Dumb View.
 class AdminDashboardViewModel extends ChangeNotifier {
+  final TouristService _touristService;
+
   bool _isLoading = false;
   String? _errorMessage;
+  String _firstName = ""; // Will hold the dynamic name
 
-  // Mocked state for future backend integration
-  String _activePackages = '124';
-  String _pendingReservations = '38';
-  String _conversionRate = '24%';
+  /// Injects the domain service dependency.
+  AdminDashboardViewModel(this._touristService);
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  String get activePackages => _activePackages;
-  String get pendingReservations => _pendingReservations;
-  String get conversionRate => _conversionRate;
+  String get firstName => _firstName;
 
-  /// Simulates an asynchronous data fetch for the dashboard KPIs.
-  /// To be wired to a domain service (e.g., AnalyticsService) in future sprints.
-  Future<void> loadDashboardStats() async {
+  /// Consumes the domain service to fetch the active admin's profile data.
+  Future<void> loadAdminProfile() async {
     _isLoading = true;
     notifyListeners();
 
-    try {
-      // TODO: Replace with real domain service call
-      await Future.delayed(const Duration(milliseconds: 800));
+    final result = await _touristService.fetchMyProfile();
 
-      // Simulated dynamic data update
-      _activePackages = '125';
+    _isLoading = false;
 
-    } catch (e) {
-      _errorMessage = 'Failed to load live statistics.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+    if (result['success']) {
+      // Extract the first name, fallback to 'Admin' if null
+      _firstName = result['data']['first_name'] ?? 'ADMIN';
+    } else {
+      _errorMessage = result['message'];
+      _firstName = 'ADMIN'; // Safe fallback for the UI
     }
+    notifyListeners();
   }
 
   /// Explicitly clears the error state to prevent UI notification loops.

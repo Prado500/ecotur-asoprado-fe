@@ -32,4 +32,17 @@ class TouristService {
       return {'success': false, 'message': 'Unexpected network error during registration.'};
     }
   }
+
+
+  /// Fetches the generic profile data of the currently authenticated user.
+  /// Consumes the protected GET /usuarios/mi-perfil endpoint.
+  Future<Map<String, dynamic>> fetchMyProfile() async {
+    try {
+      return await _apiClient.get('/usuarios/mi-perfil');
+    } catch (e) {
+      debugPrint('CRITICAL ERROR IN TOURIST SERVICE (fetchMyProfile): $e');
+      return {'success': false, 'message': 'Error de red inesperado al cargar el perfil.'};
+    }
+  }
+
 }
