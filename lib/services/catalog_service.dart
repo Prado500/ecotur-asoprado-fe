@@ -28,4 +28,63 @@ class CatalogService {
   Future<Map<String, dynamic>> createService(Map<String, dynamic> serviceData) async {
     return await _apiClient.post('/servicios/', serviceData);
   }
+
+  /// Fetches the list of inactive packages (Por Activar).
+  /// Requires Admin JWT session.
+  Future<List<TouristService>> fetchInactiveServices() async {
+    try {
+      final response = await _apiClient.get('/servicios/admin/inactivos');
+      if (response['success']) {
+        final List<dynamic> data = response['data'] ?? [];
+        return data.map((json) => TouristService.fromJson(json)).toList();
+      }
+      throw Exception(response['message']);
+    } catch (e) {
+      debugPrint('Error in CatalogService (fetchInactiveServices): $e');
+      throw Exception('Error de red al cargar paquetes inactivos.');
+    }
+  }
+
+  /// Fetches the list of soft-deleted packages (Eliminados).
+  /// Requires Admin JWT session.
+  Future<List<TouristService>> fetchDeletedServices() async {
+    try {
+      final response = await _apiClient.get('/servicios/admin/eliminados');
+      if (response['success']) {
+        final List<dynamic> data = response['data'] ?? [];
+        return data.map((json) => TouristService.fromJson(json)).toList();
+      }
+      throw Exception(response['message']);
+    } catch (e) {
+      debugPrint('Error in CatalogService (fetchDeletedServices): $e');
+      throw Exception('Error de red al cargar paquetes eliminados.');
+    }
+  }
+
+  /// Triggers a state mutation transitioning a package to Active.
+  Future<Map<String, dynamic>> activateService(int serviceId) async {
+    // Coincide con: @router.patch("/{service_id}/activar")
+    return await _apiClient.patch('/servicios/$serviceId/activar');
+  }
+
+  /// Triggers a state mutation transitioning a package to Inactive.
+  Future<Map<String, dynamic>> deactivateService(int serviceId) async {
+    // Coincide con: @router.patch("/{service_id}/desactivar")
+    return await _apiClient.patch('/servicios/$serviceId/desactivar');
+  }
+
+  /// Recovers a soft-deleted package back to the Inactive queue.
+  Future<Map<String, dynamic>> recoverService(int serviceId) async {
+    // Coincide con: @router.patch("/{service_id}/recuperar")
+    return await _apiClient.patch('/servicios/$serviceId/recuperar');
+  }
+
+  /// Soft deletes a package, sending it to the recycling bin.
+  Future<Map<String, dynamic>> softDeleteService(int serviceId) async {
+    // Coincide con: @router.delete("/{service_id}")
+    return await _apiClient.delete('/servicios/$serviceId');
+  }
+
+
 }
+

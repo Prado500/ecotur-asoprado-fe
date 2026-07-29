@@ -1,4 +1,5 @@
 class TouristService {
+  final int id;
   final String name;
   final String description;
   final String category;
@@ -8,6 +9,7 @@ class TouristService {
   final List<String> imageUrls;
 
   TouristService({
+    required this.id,
     required this.name,
     required this.description,
     required this.category,
@@ -17,8 +19,8 @@ class TouristService {
     required this.imageUrls,
   });
 
-  /// Fabrica una instancia de [TouristService] a partir de un mapa JSON.
-  /// Maneja de forma segura los nulos y la conversión de tipos provenientes del backend (FastAPI).
+  /// Fabricates a [TouristService] instance from a JSON map.
+  /// Safely handles nulls, type conversions, and extracts the unique ID from FastAPI.
   factory TouristService.fromJson(Map<String, dynamic> json) {
     List<String> extractedUrls = [];
 
@@ -29,6 +31,7 @@ class TouristService {
     }
 
     return TouristService(
+      id: json['id'] ?? 0,
       name: json['name'] ?? 'Servicio sin nombre',
       description: json['description'] ?? '',
       category: json['category'] ?? '',
@@ -39,8 +42,8 @@ class TouristService {
     );
   }
 
-  /// Retorna la primera URL de la lista de imágenes, o una cadena vacía si no hay imágenes.
-  /// Ideal para ser consumida como portada por la UI.
+  /// Returns the first URL from the image list, or an empty string if there are no images.
+  /// Ideal to be consumed as a cover image by the UI.
   String get primaryImageUrl {
     return imageUrls.isNotEmpty ? imageUrls.first : '';
   }

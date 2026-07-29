@@ -31,6 +31,18 @@ class ApiClient {
     return _request('GET', endpoint);
   }
 
+  Future<Map<String, dynamic>> put(String endpoint, Map<String, dynamic> body) async {
+    return _request('PUT', endpoint, body: body);
+  }
+
+  Future<Map<String, dynamic>> patch(String endpoint, {Map<String, dynamic>? body}) async {
+    return _request('PATCH', endpoint, body: body);
+  }
+
+  Future<Map<String, dynamic>> delete(String endpoint) async {
+    return _request('DELETE', endpoint);
+  }
+
   /// Internal method to handle the actual HTTP request and response parsing.
   Future<Map<String, dynamic>> _request(String method, String endpoint, {Map<String, dynamic>? body}) async {
     try {
@@ -48,6 +60,12 @@ class ApiClient {
 
       if (method == 'POST') {
         response = await http.post(uri, headers: headers, body: json.encode(body));
+      } else if (method == 'PUT') {
+        response = await http.put(uri, headers: headers, body: json.encode(body));
+      } else if (method == 'PATCH') {
+        response = await http.patch(uri, headers: headers, body: body != null ? json.encode(body) : null);
+      } else if (method == 'DELETE') {
+        response = await http.delete(uri, headers: headers);
       } else {
         response = await http.get(uri, headers: headers);
       }
