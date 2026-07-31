@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AdminFormField extends StatelessWidget {
   final String label;
@@ -7,6 +8,7 @@ class AdminFormField extends StatelessWidget {
   final bool isNumeric;
   final int maxLines;
   final String? Function(String?)? validator;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AdminFormField({
     super.key,
@@ -16,6 +18,7 @@ class AdminFormField extends StatelessWidget {
     this.isNumeric = false,
     this.maxLines = 1,
     this.validator,
+    this.inputFormatters,
   });
 
   @override
@@ -33,6 +36,7 @@ class AdminFormField extends StatelessWidget {
           maxLines: maxLines,
           validator: validator,
           autovalidateMode: AutovalidateMode.onUserInteraction,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Color(0xFFBAC9CC)),

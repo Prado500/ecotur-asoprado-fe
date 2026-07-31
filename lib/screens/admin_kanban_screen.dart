@@ -9,7 +9,7 @@ import 'admin_create_package_screen.dart';
 import 'catalog_screen.dart';
 
 /// Dumb View rendering the Administrative Kanban Board.
-/// Subscribes to [AdminKanbanViewModel] to dynamically paint Trello-like columns.
+/// Subscribes to [AdminKanbanViewModel] to dynamically paint columns.
 class AdminKanbanScreen extends StatefulWidget {
   final String entityType; // 'paquetes' or 'usuarios'
   final CatalogService? catalogService;
@@ -28,8 +28,6 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
     super.initState();
     _viewModel = AdminKanbanViewModel(widget.catalogService ?? CatalogService());
     _viewModel.addListener(_onViewModelChange);
-
-    // Initial concurrent hydration
     _viewModel.loadKanbanBoard();
   }
 
@@ -52,7 +50,6 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
   }
 
   /// Triggers a generic Bottom Sheet modal mapping available operations
-  /// based on the column the card currently resides in.
   void _openActionModal(TouristService service, String currentStatus) {
     showModalBottomSheet(
         context: context,
@@ -71,14 +68,17 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
                   Text(service.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF191C1E))),
                   const Divider(height: 32, color: Color(0xFFE2E8F0)),
 
-                  // Operational mapping logic
                   if (currentStatus == 'activos') ...[
                     ListTile(
                       leading: const Icon(Icons.edit_outlined, color: Color(0xFF006875)),
                       title: const Text('Editar Detalles'),
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        UIHelpers.showSnackBar(context, 'Módulo de edición profunda en construcción.', isError: false);
+                        final updated = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(builder: (context) => AdminCreatePackageScreen(serviceToEdit: service))
+                        );
+                        if (updated == true) _viewModel.loadKanbanBoard();
                       },
                     ),
                     ListTile(
@@ -90,6 +90,18 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
                       },
                     ),
                   ] else if (currentStatus == 'inactivos') ...[
+                    ListTile(
+                      leading: const Icon(Icons.edit_outlined, color: Color(0xFF006875)),
+                      title: const Text('Editar Detalles'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final updated = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(builder: (context) => AdminCreatePackageScreen(serviceToEdit: service))
+                        );
+                        if (updated == true) _viewModel.loadKanbanBoard();
+                      },
+                    ),
                     ListTile(
                       leading: const Icon(Icons.play_circle_outline, color: Color(0xFF006C49)),
                       title: const Text('Activar (Publicar en Catálogo)'),
@@ -124,7 +136,6 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
     );
   }
 
-  /// Builds an isolated Trello-like column.
   Widget _buildKanbanColumn(String title, int count, List<TouristService> items, String columnType, {bool isAudit = false}) {
     return Container(
       width: 320,
@@ -140,10 +151,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF191C1E)),
-              ),
+              Text(title, style: const TextStyle(fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF191C1E))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFBAC9CC))),
@@ -156,9 +164,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
             child: isAudit
                 ? Center(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    UIHelpers.showSnackBar(context, 'Módulo de auditoría en construcción.', isError: false);
-                  },
+                  onPressed: () => UIHelpers.showSnackBar(context, 'Módulo de auditoría en construcción.', isError: false),
                   icon: const Icon(Icons.history, color: Colors.white, size: 18),
                   label: const Text('Ver Historial Completo', style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006875), elevation: 0),
@@ -167,8 +173,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
                 : ListView.builder(
                 itemCount: items.length,
                 itemBuilder: (context, index) {
-                  final service = items[index];
-                  return _buildKanbanCard(service, columnType);
+                  return _buildKanbanCard(items[index], columnType);
                 }
             ),
           ),
@@ -177,9 +182,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
               padding: const EdgeInsets.only(top: 8.0),
               child: IconButton(
                 icon: const Icon(Icons.search, size: 28, color: Color(0xFF3B494C)),
-                onPressed: () {
-                  UIHelpers.showSnackBar(context, 'Módulo de búsqueda en construcción.', isError: false);
-                },
+                onPressed: () => UIHelpers.showSnackBar(context, 'Módulo de búsqueda en construcción.', isError: false),
               ),
             )
         ],
@@ -187,7 +190,6 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
     );
   }
 
-  /// Builds the individual draggable/interactive card instance.
   Widget _buildKanbanCard(TouristService service, String columnType) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -244,36 +246,41 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
         children: [
           Column(
             children: [
-              // Top Operational Bar
+              // Top Operational Bar with safe overflow prevention (FittedBox + Expanded)
               Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        if (isPackage) {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminCreatePackageScreen()));
-                        }
-                      },
-                      icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                      label: Text(isPackage ? 'Crear Paquete' : 'Crear Usuario', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), backgroundColor: const Color(0xFF006C49), elevation: 0),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          if (isPackage) {
+                            final created = await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(builder: (context) => const AdminCreatePackageScreen())
+                            );
+                            if (created == true) _viewModel.loadKanbanBoard();
+                          }
+                        },
+                        icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                        label: FittedBox(child: Text(isPackage ? 'Crear Paquete' : 'Crear Usuario', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: const Color(0xFF006C49), elevation: 0),
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const CatalogScreen()));
-                      },
-                      icon: const Icon(Icons.public, color: Color(0xFF006875), size: 18),
-                      label: Text(isPackage ? 'Ir al catálogo público' : 'Ver directorio', style: const TextStyle(color: Color(0xFF006875), fontWeight: FontWeight.w600)),
-                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), side: const BorderSide(color: Color(0xFF006875))),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CatalogScreen())),
+                        icon: const Icon(Icons.public, color: Color(0xFF006875), size: 18),
+                        label: FittedBox(child: Text(isPackage ? 'Catálogo Público' : 'Directorio', style: const TextStyle(color: Color(0xFF006875), fontWeight: FontWeight.w600))),
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Color(0xFF006875))),
+                      ),
                     ),
                   ],
                 ),
               ),
 
-              // Kanban Board (Horizontal Scroll + Listenable Repaints)
+              // Kanban Board
               Expanded(
                 child: ListenableBuilder(
                     listenable: _viewModel,
@@ -284,7 +291,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
 
                       return SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.only(left: 24, right: 24, bottom: 80), // Added bottom padding to avoid NavBar overlap
+                        padding: const EdgeInsets.only(left: 24, right: 24, bottom: 80),
                         child: Row(
                           children: [
                             _buildKanbanColumn('Auditar', 0, [], 'auditar', isAudit: true),
@@ -303,7 +310,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
           // Bottom Navigation Bar
           Positioned(
             bottom: 0, left: 0, right: 0,
-            child: AdminBottomNavBar(currentIndex: isPackage ? 1 : 2), // Index 1 for Packages, 2 for Users
+            child: AdminBottomNavBar(currentIndex: isPackage ? 1 : 2),
           ),
         ],
       ),

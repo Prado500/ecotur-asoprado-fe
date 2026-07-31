@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import '../services/catalog_service.dart';
+import '../models/tourist_service_model.dart';
 import '../view_models/admin_create_package_viewmodel.dart';
 import '../widgets/admin/admin_section_card.dart';
 import '../widgets/admin/admin_form_field.dart';
 import '../utils/ui_helpers.dart';
+import '../utils/currency_formatter.dart';
 
-/// Dumb View rendering the administrative package creation layout.
-/// Strictly observes [AdminCreatePackageViewModel] for dynamic rebuilds.
+/// Dumb View rendering the bimodal package creation/edition layout.
+/// Evaluates [AdminCreatePackageViewModel.isEditMode] to mutate titles and submission buttons.
 class AdminCreatePackageScreen extends StatefulWidget {
   final CatalogService? catalogService;
+  final TouristService? serviceToEdit;
 
-  const AdminCreatePackageScreen({super.key, this.catalogService});
+  const AdminCreatePackageScreen({super.key, this.catalogService, this.serviceToEdit});
 
   @override
   State<AdminCreatePackageScreen> createState() => _AdminCreatePackageScreenState();
@@ -23,7 +26,10 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = AdminCreatePackageViewModel(widget.catalogService ?? CatalogService());
+    _viewModel = AdminCreatePackageViewModel(
+      widget.catalogService ?? CatalogService(),
+      serviceToEdit: widget.serviceToEdit,
+    );
     _viewModel.addListener(_onViewModelChange);
   }
 
@@ -34,8 +40,9 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
     }
 
     if (_viewModel.isSuccess) {
-      UIHelpers.showSnackBar(context, '¡Paquete creado exitosamente!', isError: false);
-      if (mounted) Navigator.pop(context);
+      final successMsg = _viewModel.isEditMode ? '¡Paquete actualizado exitosamente!' : '¡Paquete creado exitosamente!';
+      UIHelpers.showSnackBar(context, successMsg, isError: false);
+      if (mounted) Navigator.pop(context, true); // Yields 'true' to parent view to trigger data hydration
     }
   }
 
@@ -46,9 +53,43 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
     super.dispose();
   }
 
-  void _handleSaveSubmission() {
+  /// Triggers standard creation, or prompts a confirmation dialog if editing.
+  void _handleSubmit() {
     if (!_formKey.currentState!.validate()) return;
-    _viewModel.savePackage();
+
+    if (_viewModel.isEditMode) {
+      _showConfirmationDialog();
+    } else {
+      _viewModel.savePackage();
+    }
+  }
+
+  /// Renders a non-blocking confirmation dialog to prevent accidental data overwrites.
+  void _showConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text('Confirmar Actualización', style: TextStyle(fontFamily: 'Space Grotesk', fontWeight: FontWeight.bold, color: Color(0xFF191C1E))),
+          content: const Text('¿Estás seguro de que deseas guardar los cambios realizados en este paquete? Esta acción modificará los datos en el sistema.', style: TextStyle(color: Color(0xFF3B494C))),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('CANCELAR', style: TextStyle(color: Color(0xFF6B7A7D))),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _viewModel.updatePackage();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006875)),
+              child: const Text('SÍ, ACTUALIZAR', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -59,7 +100,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back, color: Color(0xFF3B494C)), onPressed: () => Navigator.pop(context)),
-        title: const Text('CREAR NUEVO PAQUETE', style: TextStyle(fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF191C1E))),
+        title: Text(_viewModel.isEditMode ? 'EDITAR PAQUETE' : 'CREAR NUEVO PAQUETE', style: const TextStyle(fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF191C1E))),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -76,12 +117,11 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                   children: [
                     AdminFormField(
                       label: 'NOMBRE DEL PAQUETE',
-                      hint: 'Ej. Ruta de la Cascada',
+                      hint: 'Ej. Ruta de la Cascada Prado',
                       controller: _viewModel.nameController,
                       validator: (value) {
-                        if (value == null || value.trim().length < 4) {
-                          return 'El nombre debe ser más descriptivo (mín. 4 letras)';
-                        }
+                        if (value == null || value.trim().length < 20) return 'Mínimo 20 caracteres (Ej: Tour Cascada la Encantada)';
+                        if (value.trim().length > 65) return 'Máximo 65 caracteres permitidos';
                         return null;
                       },
                     ),
@@ -112,45 +152,15 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                     const SizedBox(height: 16),
                     AdminFormField(
                       label: 'DESCRIPCIÓN DEL PAQUETE',
-                      hint: 'Detalle exhaustivo...',
+                      hint: 'Detalle exhaustivo de la experiencia...',
                       controller: _viewModel.descriptionController,
                       maxLines: 4,
                       validator: (value) {
-                        if (value == null || value.trim().length < 20) {
-                          return 'La descripción es muy corta. Detalla mejor la experiencia.';
-                        }
+                        if (value == null || value.trim().length < 20) return 'La descripción debe tener al menos 20 caracteres';
+                        if (value.trim().length > 1000) return 'Máximo 1000 caracteres';
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: const Color(0xFFF2F4F6), borderRadius: BorderRadius.circular(4)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('ESTADO DE DISPONIBILIDAD', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                Text('Activa la visibilidad pública.', style: TextStyle(fontSize: 12, color: Color(0xFF6B7A7D))),
-                              ],
-                            ),
-                          ),
-                          ListenableBuilder(
-                              listenable: _viewModel,
-                              builder: (context, child) {
-                                return Switch(
-                                  value: _viewModel.isAvailable,
-                                  activeColor: const Color(0xFF006C49),
-                                  onChanged: (val) => _viewModel.setAvailability(val),
-                                );
-                              }
-                          ),
-                        ],
-                      ),
-                    )
                   ],
                 ),
               ),
@@ -159,14 +169,14 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                 title: 'PARÁMETROS DE CAPACIDAD Y SERVICIO',
                 dotColor: const Color(0xFF6834D1),
                 content: AdminFormField(
-                  label: 'CAPACIDAD MÁX.',
+                  label: 'CAPACIDAD MÁXIMA DE TURISTAS',
                   hint: 'Ej. 15',
                   controller: _viewModel.capacityController,
                   isNumeric: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Requerido';
-                    final number = int.tryParse(value);
-                    if (number == null || number <= 0) return 'Debe ser mayor a 0';
+                    final number = int.tryParse(value.trim());
+                    if (number == null || number <= 0 || number > 30) return 'La capacidad debe ser entre 1 y 30 personas';
                     return null;
                   },
                 ),
@@ -180,13 +190,15 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                   children: [
                     AdminFormField(
                       label: 'PRECIO BASE (COP)',
-                      hint: '\$ 0.00',
+                      hint: 'Ej. 85.000',
                       controller: _viewModel.priceController,
                       isNumeric: true,
+                      inputFormatters: [CurrencyInputFormatter()],
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'Requerido';
-                        final number = double.tryParse(value);
-                        if (number == null || number <= 0) return 'Precio inválido';
+                        final cleanValue = value.replaceAll('.', '').trim();
+                        final number = double.tryParse(cleanValue);
+                        if (number == null || number < 40000) return 'El precio mínimo permitido es \$40.000 COP';
                         return null;
                       },
                     ),
@@ -195,8 +207,6 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                       padding: EdgeInsets.only(bottom: 8.0),
                       child: Text('ENLACES DE IMÁGENES PÚBLICAS', style: TextStyle(fontSize: 12, color: Color(0xFF3B494C), fontWeight: FontWeight.bold)),
                     ),
-
-                    // --- REACTIVE DYNAMIC LIST BUILDER ---
                     ListenableBuilder(
                         listenable: _viewModel,
                         builder: (context, child) {
@@ -215,6 +225,12 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                                           label: '',
                                           hint: 'https://ejemplo.com/foto.jpg',
                                           controller: controller,
+                                          validator: (val) {
+                                            if (val != null && val.isNotEmpty && !val.startsWith('http://') && !val.startsWith('https://')) {
+                                              return 'Debe ser un enlace válido (http:// o https://)';
+                                            }
+                                            return null;
+                                          },
                                         ),
                                       ),
                                       const SizedBox(width: 8),
@@ -254,7 +270,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
         ),
         child: SafeArea(
           child: Row(
@@ -272,9 +288,9 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                     listenable: _viewModel,
                     builder: (context, child) {
                       return ElevatedButton.icon(
-                        onPressed: _viewModel.isLoading ? null : _handleSaveSubmission,
+                        onPressed: _viewModel.isLoading ? null : _handleSubmit,
                         icon: _viewModel.isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white)) : const Icon(Icons.save, color: Colors.white, size: 18),
-                        label: const Text('GUARDAR', style: TextStyle(color: Colors.white)),
+                        label: Text(_viewModel.isEditMode ? 'ACTUALIZAR' : 'GUARDAR', style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006C49), padding: const EdgeInsets.symmetric(vertical: 16)),
                       );
                     }

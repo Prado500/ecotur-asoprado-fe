@@ -85,6 +85,11 @@ class CatalogService {
     return await _apiClient.delete('/servicios/$serviceId');
   }
 
+  /// Dispatches the payload to update an existing tourist package.
+  Future<Map<String, dynamic>> updateService(int serviceId, Map<String, dynamic> serviceData) async {
+    return await _apiClient.put('/servicios/$serviceId', serviceData);
+  }
+
 
 }
 
