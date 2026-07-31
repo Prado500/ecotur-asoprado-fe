@@ -10,6 +10,7 @@ import 'package:ecotur_app/models/tourist_service_model.dart' as _i4;
 import 'package:ecotur_app/services/auth_service.dart' as _i5;
 import 'package:ecotur_app/services/catalog_service.dart' as _i2;
 import 'package:ecotur_app/services/session_service.dart' as _i6;
+import 'package:ecotur_app/services/tourist_service.dart' as _i9;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i7;
 
@@ -57,6 +58,79 @@ class MockCatalogService extends _i1.Mock implements _i2.CatalogService {
             ),
           )
           as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<List<_i4.TouristService>> fetchInactiveServices() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchInactiveServices, []),
+            returnValue: _i3.Future<List<_i4.TouristService>>.value(
+              <_i4.TouristService>[],
+            ),
+          )
+          as _i3.Future<List<_i4.TouristService>>);
+
+  @override
+  _i3.Future<List<_i4.TouristService>> fetchDeletedServices() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchDeletedServices, []),
+            returnValue: _i3.Future<List<_i4.TouristService>>.value(
+              <_i4.TouristService>[],
+            ),
+          )
+          as _i3.Future<List<_i4.TouristService>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> activateService(int? serviceId) =>
+      (super.noSuchMethod(
+            Invocation.method(#activateService, [serviceId]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> deactivateService(int? serviceId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deactivateService, [serviceId]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> recoverService(int? serviceId) =>
+      (super.noSuchMethod(
+            Invocation.method(#recoverService, [serviceId]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> softDeleteService(int? serviceId) =>
+      (super.noSuchMethod(
+            Invocation.method(#softDeleteService, [serviceId]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> updateService(
+    int? serviceId,
+    Map<String, dynamic>? serviceData,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateService, [serviceId, serviceData]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
 }
 
 /// A class which mocks [AuthService].
@@ -71,6 +145,16 @@ class MockAuthService extends _i1.Mock implements _i5.AuthService {
   _i3.Future<Map<String, dynamic>> login(String? email, String? password) =>
       (super.noSuchMethod(
             Invocation.method(#login, [email, password]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> verifyEmail(String? token) =>
+      (super.noSuchMethod(
+            Invocation.method(#verifyEmail, [token]),
             returnValue: _i3.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
@@ -159,4 +243,49 @@ class MockSessionService extends _i1.Mock implements _i6.SessionService {
     Invocation.method(#notifyListeners, []),
     returnValueForMissingStub: null,
   );
+}
+
+/// A class which mocks [TouristService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockTouristService extends _i1.Mock implements _i9.TouristService {
+  MockTouristService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i3.Future<Map<String, dynamic>> registerTourist({
+    required String? cedula,
+    required String? email,
+    required String? password,
+    required String? firstName,
+    required String? lastName,
+    required String? phone,
+    required bool? dataConsent,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#registerTourist, [], {
+              #cedula: cedula,
+              #email: email,
+              #password: password,
+              #firstName: firstName,
+              #lastName: lastName,
+              #phone: phone,
+              #dataConsent: dataConsent,
+            }),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> fetchMyProfile() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchMyProfile, []),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
 }

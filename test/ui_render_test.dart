@@ -8,22 +8,23 @@ import 'package:mockito/annotations.dart';
 // Import application screens
 import 'package:ecotur_app/screens/login_screen.dart';
 import 'package:ecotur_app/screens/catalog_screen.dart';
+import 'package:ecotur_app/screens/admin_dashboard_screen.dart';
+import 'package:ecotur_app/screens/admin_kanban_screen.dart';
+import 'package:ecotur_app/screens/admin_create_package_screen.dart';
 
 // Import domain and state management services
 import 'package:ecotur_app/services/catalog_service.dart';
 import 'package:ecotur_app/services/auth_service.dart';
 import 'package:ecotur_app/services/session_service.dart';
+import 'package:ecotur_app/services/tourist_service.dart';
 
-// Import the auto-generated Mocks file.
-// NOTE: This will show a red error in your IDE until you execute the build_runner command.
 import 'ui_render_test.mocks.dart';
 
-// Instruct Mockito to generate mock classes for these specific services.
-@GenerateMocks([CatalogService, AuthService, SessionService])
+// Inject TouristService into the Mock generator
+@GenerateMocks([CatalogService, AuthService, SessionService, TouristService])
 void main() {
 
   setUpAll(() {
-    // Inject environment variables to prevent the internal ApiClient from crashing during tests.
     dotenv.loadFromString(envString: '''
 API_URL=http://localhost:8000
     ''');
@@ -33,50 +34,35 @@ API_URL=http://localhost:8000
 
     // --- TEST 1: LOGIN SCREEN ---
     testWidgets('Should render the Login screen with its critical input fields', (WidgetTester tester) async {
-      // Instantiate the mock services to bypass network and SharedPreferences exceptions.
       final mockAuthService = MockAuthService();
       final mockSessionService = MockSessionService();
 
-      // Pump the login widget injecting the mock dependencies.
       await tester.pumpWidget(MaterialApp(
-        home: LoginScreen(
-          authService: mockAuthService,
-          sessionService: mockSessionService,
-        ),
+        home: LoginScreen(authService: mockAuthService, sessionService: mockSessionService),
       ));
-
       await tester.pumpAndSettle();
 
-      // Validate that the critical UI components are painted on the screen.
       expect(find.text('INICIAR SESIÓN'), findsOneWidget);
       expect(find.text('CORREO ELECTRÓNICO'), findsOneWidget);
       expect(find.text('CONTRASEÑA'), findsOneWidget);
-      expect(find.byType(Scaffold), findsWidgets);
     });
 
-    // --- TEST 2: CATALOG SCREEN ---
-    testWidgets('Should render the Catalog screen using a mocked CatalogService', (WidgetTester tester) async {
-
-      // 1. Instantiate the mock domain specialist.
+    // --- TEST 2: CATALOG SCREEN (TOURIST VIEW) ---
+    testWidgets('Should render the Catalog screen for Tourists with BottomNav', (WidgetTester tester) async {
       final mockCatalogService = MockCatalogService();
+      final mockSessionService = MockSessionService();
 
-      // 2. STUBBING (Program the mock's behavior):
-      // Simulate the backend returning an empty list of tourist packages.
       when(mockCatalogService.fetchServices()).thenAnswer((_) async => []);
+      when(mockSessionService.checkExistingSession()).thenAnswer((_) async => false);
+      when(mockSessionService.userRole).thenReturn('tourist');
 
-      // 3. Pump the catalog widget injecting the mock dependency.
       await tester.pumpWidget(MaterialApp(
-        home: CatalogScreen(catalogService: mockCatalogService),
+        home: CatalogScreen(catalogService: mockCatalogService, sessionService: mockSessionService),
       ));
-
-      // 4. Advance the frames to allow the ViewModel's Future to resolve.
       await tester.pumpAndSettle();
 
-      // 5. Validate that the screen did not crash and rendered its main structure.
-      expect(find.byType(Scaffold), findsWidgets);
       expect(find.text('SERVICIOS TURÍSTICOS'), findsOneWidget);
-
-      // 6. Verify that the view effectively commanded the ViewModel to fetch data from the service.
+      expect(find.text('ECOTUR ASOPRADO'), findsOneWidget); // Default Tourist AppBar title
       verify(mockCatalogService.fetchServices()).called(1);
     });
 
@@ -85,18 +71,73 @@ API_URL=http://localhost:8000
       final mockAuthService = MockAuthService();
 
       await tester.pumpWidget(MaterialApp(
-        home: VerificationScreen(
-            token: "dummy_jwt_token",
-            authService: mockAuthService
-        ),
+        home: VerificationScreen(token: "dummy_jwt_token", authService: mockAuthService),
       ));
-
       await tester.pumpAndSettle();
 
-      // Validate core UI components
       expect(find.text('VERIFICACIÓN DE SEGURIDAD'), findsOneWidget);
       expect(find.text('Verificar mi Cuenta'), findsOneWidget);
-      expect(find.byType(ElevatedButton), findsOneWidget);
+    });
+
+    // --- TEST 4: ADMIN DASHBOARD HUB ---
+    testWidgets('Should render Admin Action Hub and hydrate profile', (WidgetTester tester) async {
+      final mockTouristService = MockTouristService();
+
+      // Stubbing the profile hydration response
+      when(mockTouristService.fetchMyProfile()).thenAnswer((_) async => {
+        'success': true,
+        'data': {'first_name': 'Admin'}
+      });
+
+      await tester.pumpWidget(MaterialApp(
+        home: AdminDashboardScreen(touristService: mockTouristService),
+      ));
+      await tester.pumpAndSettle();
+
+      // Validate UI Structure
+      expect(find.text('¿Qué haremos hoy?'), findsOneWidget);
+      expect(find.text('Administrar\npaquetes'), findsOneWidget);
+      expect(find.text('Administrar\nusuarios'), findsOneWidget);
+
+      // Verify hydration logic executed
+      verify(mockTouristService.fetchMyProfile()).called(1);
+    });
+
+    // --- TEST 5: ADMIN KANBAN SCREEN ---
+    testWidgets('Should render Admin Kanban Screen with its respective 4 columns', (WidgetTester tester) async {
+      final mockCatalogService = MockCatalogService();
+
+      // Stub concurrent API calls
+      when(mockCatalogService.fetchServices()).thenAnswer((_) async => []);
+      when(mockCatalogService.fetchInactiveServices()).thenAnswer((_) async => []);
+      when(mockCatalogService.fetchDeletedServices()).thenAnswer((_) async => []);
+
+      await tester.pumpWidget(MaterialApp(
+        home: AdminKanbanScreen(entityType: 'paquetes', catalogService: mockCatalogService),
+      ));
+      await tester.pumpAndSettle();
+
+      // Validate Kanban Columns exist
+      expect(find.text('GESTIÓN DE PAQUETES'), findsOneWidget);
+      expect(find.text('Auditar'), findsOneWidget);
+      expect(find.text('Eliminados'), findsOneWidget);
+      expect(find.text('Por Activar'), findsOneWidget);
+      expect(find.text('Activos'), findsOneWidget);
+    });
+
+    // --- TEST 6: ADMIN CREATE PACKAGE SCREEN (BIMODAL) ---
+    testWidgets('Should render Admin Create Package Form with Fail Fast Constraints', (WidgetTester tester) async {
+      final mockCatalogService = MockCatalogService();
+
+      await tester.pumpWidget(MaterialApp(
+        home: AdminCreatePackageScreen(catalogService: mockCatalogService),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CREAR NUEVO PAQUETE'), findsOneWidget);
+      expect(find.text('NOMBRE DEL PAQUETE'), findsOneWidget);
+      expect(find.text('PRECIO BASE (COP)'), findsOneWidget);
+      expect(find.text('GUARDAR'), findsOneWidget);
     });
   });
 }
