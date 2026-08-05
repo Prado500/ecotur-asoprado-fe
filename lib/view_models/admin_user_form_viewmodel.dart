@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/tourist_service.dart';
+import '../services/user_service.dart';
 import '../models/user_model.dart';
 
 /// ViewModel orchestrating the Bimodal User Edition form presentation state.
@@ -8,7 +8,7 @@ import '../models/user_model.dart';
 /// (Create vs. Update) to satisfy strict Pydantic DTO boundaries and guarantee
 /// zero technical debt regarding administrative provisioning.
 class AdminUserFormViewModel extends ChangeNotifier {
-  final TouristService _touristService;
+  final UserService _touristService;
   final UserModel? userToEdit;
 
   final TextEditingController cedulaController = TextEditingController();

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/tourist_service.dart';
+import '../services/user_service.dart';
 import '../view_models/register_viewmodel.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/common/custom_input.dart';
@@ -7,9 +7,9 @@ import '../widgets/common/custom_input.dart';
 /// Dumb View rendering the registration interface.
 /// It strictly listens to the [RegisterViewModel] and paints UI states accordingly.
 class RegisterScreen extends StatefulWidget {
-  final TouristService? touristService;
+  final UserService? userService;
 
-  const RegisterScreen({super.key, this.touristService});
+  const RegisterScreen({super.key, this.userService});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -23,7 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     // Dependency Injection: Initialize ViewModel with the specific Domain Service
-    _viewModel = RegisterViewModel(widget.touristService ?? TouristService());
+    _viewModel = RegisterViewModel(widget.userService ?? UserService());
 
     // Attach the context-safe observer to listen for side-effects (Errors/Success)
     _viewModel.addListener(_onViewModelChange);

@@ -16,12 +16,12 @@ import 'package:ecotur_app/screens/admin_create_package_screen.dart';
 import 'package:ecotur_app/services/catalog_service.dart';
 import 'package:ecotur_app/services/auth_service.dart';
 import 'package:ecotur_app/services/session_service.dart';
-import 'package:ecotur_app/services/tourist_service.dart';
+import 'package:ecotur_app/services/user_service.dart';
 
 import 'ui_render_test.mocks.dart';
 
 // Inject TouristService into the Mock generator
-@GenerateMocks([CatalogService, AuthService, SessionService, TouristService])
+@GenerateMocks([CatalogService, AuthService, SessionService, UserService])
 void main() {
 
   setUpAll(() {
@@ -90,7 +90,7 @@ API_URL=http://localhost:8000
       });
 
       await tester.pumpWidget(MaterialApp(
-        home: AdminDashboardScreen(touristService: mockTouristService),
+        home: AdminDashboardScreen(userService: mockTouristService),
       ));
       await tester.pumpAndSettle();
 

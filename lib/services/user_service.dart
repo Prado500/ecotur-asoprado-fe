@@ -6,7 +6,7 @@ import '../models/user_model.dart';
 ///
 /// It acts as the networking intermediary between the ViewModels and the [ApiClient],
 /// strictly mapping DTOs and handling raw HTTP responses.
-class TouristService {
+class UserService {
   final ApiClient _apiClient = ApiClient();
 
   /// Registers a new tourist by dispatching the payload to the backend.

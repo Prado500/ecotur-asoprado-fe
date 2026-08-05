@@ -1,6 +1,6 @@
 import 'package:ecotur_app/screens/admin_kanban_screen.dart';
 import 'package:flutter/material.dart';
-import '../services/tourist_service.dart';
+import '../services/user_service.dart';
 import '../widgets/admin/admin_bottom_nav_bar.dart';
 import '../view_models/admin_dashboard_viewmodel.dart';
 import '../utils/ui_helpers.dart';
@@ -9,9 +9,9 @@ import 'profile_screen.dart';
 /// Dumb View rendering the Administrative Action Hub.
 /// Incorporates high-performance entry animations and observes [AdminDashboardViewModel].
 class AdminDashboardScreen extends StatefulWidget {
-  final TouristService? touristService;
+  final UserService? userService;
 
-  const AdminDashboardScreen({super.key, this.touristService});
+  const AdminDashboardScreen({super.key, this.userService});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -26,7 +26,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   void initState() {
     super.initState();
     // Dependency Injection
-    _viewModel = AdminDashboardViewModel(widget.touristService ?? TouristService());
+    _viewModel = AdminDashboardViewModel(widget.userService ?? UserService());
     _viewModel.addListener(_onViewModelChange);
 
     // Hardware-accelerated animation configuration (Slide-In)
