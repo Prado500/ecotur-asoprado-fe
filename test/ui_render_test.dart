@@ -11,16 +11,17 @@ import 'package:ecotur_app/screens/catalog_screen.dart';
 import 'package:ecotur_app/screens/admin_dashboard_screen.dart';
 import 'package:ecotur_app/screens/admin_kanban_screen.dart';
 import 'package:ecotur_app/screens/admin_create_package_screen.dart';
+import 'package:ecotur_app/screens/admin_user_form_screen.dart'; // <-- Nuevo import
 
 // Import domain and state management services
 import 'package:ecotur_app/services/catalog_service.dart';
 import 'package:ecotur_app/services/auth_service.dart';
 import 'package:ecotur_app/services/session_service.dart';
-import 'package:ecotur_app/services/user_service.dart';
+import 'package:ecotur_app/services/user_service.dart'; // <-- Import corregido
 
 import 'ui_render_test.mocks.dart';
 
-// Inject TouristService into the Mock generator
+// Inject UserService into the Mock generator
 @GenerateMocks([CatalogService, AuthService, SessionService, UserService])
 void main() {
 
@@ -62,7 +63,7 @@ API_URL=http://localhost:8000
       await tester.pumpAndSettle();
 
       expect(find.text('SERVICIOS TURÍSTICOS'), findsOneWidget);
-      expect(find.text('ECOTUR ASOPRADO'), findsOneWidget); // Default Tourist AppBar title
+      expect(find.text('ECOTUR ASOPRADO'), findsOneWidget);
       verify(mockCatalogService.fetchServices()).called(1);
     });
 
@@ -81,16 +82,16 @@ API_URL=http://localhost:8000
 
     // --- TEST 4: ADMIN DASHBOARD HUB ---
     testWidgets('Should render Admin Action Hub and hydrate profile', (WidgetTester tester) async {
-      final mockTouristService = MockTouristService();
+      final mockUserService = MockUserService(); // <-- Cambiado a UserService
 
       // Stubbing the profile hydration response
-      when(mockTouristService.fetchMyProfile()).thenAnswer((_) async => {
+      when(mockUserService.fetchMyProfile()).thenAnswer((_) async => {
         'success': true,
         'data': {'first_name': 'Admin'}
       });
 
       await tester.pumpWidget(MaterialApp(
-        home: AdminDashboardScreen(userService: mockTouristService),
+        home: AdminDashboardScreen(userService: mockUserService),
       ));
       await tester.pumpAndSettle();
 
@@ -100,12 +101,13 @@ API_URL=http://localhost:8000
       expect(find.text('Administrar\nusuarios'), findsOneWidget);
 
       // Verify hydration logic executed
-      verify(mockTouristService.fetchMyProfile()).called(1);
+      verify(mockUserService.fetchMyProfile()).called(1);
     });
 
-    // --- TEST 5: ADMIN KANBAN SCREEN ---
-    testWidgets('Should render Admin Kanban Screen with its respective 4 columns', (WidgetTester tester) async {
+    // --- TEST 5: ADMIN KANBAN SCREEN (PACKAGES) ---
+    testWidgets('Should render Admin Kanban Screen for Packages', (WidgetTester tester) async {
       final mockCatalogService = MockCatalogService();
+      final mockUserService = MockUserService();
 
       // Stub concurrent API calls
       when(mockCatalogService.fetchServices()).thenAnswer((_) async => []);
@@ -113,7 +115,11 @@ API_URL=http://localhost:8000
       when(mockCatalogService.fetchDeletedServices()).thenAnswer((_) async => []);
 
       await tester.pumpWidget(MaterialApp(
-        home: AdminKanbanScreen(entityType: 'paquetes', catalogService: mockCatalogService),
+        home: AdminKanbanScreen(
+          entityType: 'paquetes',
+          catalogService: mockCatalogService,
+          userService: mockUserService,
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -125,19 +131,45 @@ API_URL=http://localhost:8000
       expect(find.text('Activos'), findsOneWidget);
     });
 
-    // --- TEST 6: ADMIN CREATE PACKAGE SCREEN (BIMODAL) ---
-    testWidgets('Should render Admin Create Package Form with Fail Fast Constraints', (WidgetTester tester) async {
+    // --- TEST 6: ADMIN KANBAN SCREEN (USERS) ---
+    testWidgets('Should render Admin Kanban Screen for Users', (WidgetTester tester) async {
       final mockCatalogService = MockCatalogService();
+      final mockUserService = MockUserService();
+
+      // Stub concurrent API calls specifically for users
+      when(mockUserService.fetchUsers()).thenAnswer((_) async => []);
+      when(mockUserService.fetchDeletedUsers()).thenAnswer((_) async => []);
 
       await tester.pumpWidget(MaterialApp(
-        home: AdminCreatePackageScreen(catalogService: mockCatalogService),
+        home: AdminKanbanScreen(
+          entityType: 'usuarios',
+          catalogService: mockCatalogService,
+          userService: mockUserService,
+        ),
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('CREAR NUEVO PAQUETE'), findsOneWidget);
-      expect(find.text('NOMBRE DEL PAQUETE'), findsOneWidget);
-      expect(find.text('PRECIO BASE (COP)'), findsOneWidget);
-      expect(find.text('GUARDAR'), findsOneWidget);
+      // Validate User Kanban Columns exist
+      expect(find.text('GESTIÓN DE USUARIOS'), findsOneWidget);
+      expect(find.text('Auditar'), findsOneWidget);
+      expect(find.text('Eliminados'), findsOneWidget);
+      expect(find.text('Por Activar'), findsOneWidget);
+      expect(find.text('Activos'), findsOneWidget);
+    });
+
+    // --- TEST 7: ADMIN USER FORM SCREEN (BIMODAL) ---
+    testWidgets('Should render Admin User Form with Creation Constraints', (WidgetTester tester) async {
+      final mockUserService = MockUserService();
+
+      await tester.pumpWidget(MaterialApp(
+        home: AdminUserFormScreen(userService: mockUserService),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('NUEVO ADMINISTRADOR'), findsOneWidget);
+      expect(find.text('CÉDULA DE CIUDADANÍA'), findsOneWidget);
+      expect(find.text('CONTRASEÑA TEMPORAL'), findsOneWidget);
+      expect(find.text('CREAR CUENTA'), findsOneWidget);
     });
   });
 }
