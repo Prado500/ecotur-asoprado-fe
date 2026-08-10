@@ -378,15 +378,19 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
                         style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: const Color(0xFF006C49), elevation: 0),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CatalogScreen())),
-                        icon: const Icon(Icons.public, color: Color(0xFF006875), size: 18),
-                        label: const FittedBox(child: Text('Catálogo Público', style: TextStyle(color: Color(0xFF006875), fontWeight: FontWeight.w600))),
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Color(0xFF006875))),
+
+                    // --- CONDITIONAL RENDERING: Public Catalog button only available if current user is at the tourist services screen
+                    if (isPackage) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CatalogScreen())),
+                          icon: const Icon(Icons.public, color: Color(0xFF006875), size: 18),
+                          label: const FittedBox(child: Text('Catálogo Público', style: TextStyle(color: Color(0xFF006875), fontWeight: FontWeight.w600))),
+                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Color(0xFF006875))),
+                        ),
                       ),
-                    ),
+                    ]
                   ],
                 ),
               ),
