@@ -158,17 +158,29 @@ API_URL=http://localhost:8000
     });
 
     // --- TEST 7: ADMIN USER FORM SCREEN (BIMODAL) ---
-    testWidgets('Should render Admin User Form with Creation Constraints', (WidgetTester tester) async {
+    testWidgets('Should render Admin User Form with Creation Constraints and RBAC Dropdown', (WidgetTester tester) async {
       final mockUserService = MockUserService();
+      final mockSessionService = MockSessionService();
+
+      // Simulate Superadmin hierarchical claims
+      when(mockSessionService.userRole).thenReturn('superadmin');
+      when(mockSessionService.checkExistingSession()).thenAnswer((_) async => true);
 
       await tester.pumpWidget(MaterialApp(
-        home: AdminUserFormScreen(userService: mockUserService),
+        home: AdminUserFormScreen(
+            userService: mockUserService,
+            sessionService: mockSessionService
+        ),
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('NUEVO ADMINISTRADOR'), findsOneWidget);
+      expect(find.text('NUEVO USUARIO'), findsOneWidget);
       expect(find.text('CÉDULA DE CIUDADANÍA'), findsOneWidget);
       expect(find.text('CONTRASEÑA TEMPORAL'), findsOneWidget);
+
+      // Asserts that the Superadmin exclusive role selector was successfully rendered
+      expect(find.text('ROL DEL USUARIO (Exclusivo Superadmin)'), findsOneWidget);
+
       expect(find.text('CREAR CUENTA'), findsOneWidget);
     });
   });

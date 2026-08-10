@@ -374,7 +374,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
                           if (result == true) _viewModel.loadKanbanBoard();
                         },
                         icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                        label: FittedBox(child: Text(isPackage ? 'Crear Paquete' : 'Nuevo Administrador', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+                        label: FittedBox(child: Text(isPackage ? 'Crear Paquete' : 'Crear Usuario', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
                         style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: const Color(0xFF006C49), elevation: 0),
                       ),
                     ),

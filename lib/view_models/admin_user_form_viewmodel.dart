@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import '../services/user_service.dart';
+import '../services/session_service.dart';
 import '../models/user_model.dart';
 
 /// ViewModel orchestrating the Bimodal User Edition form presentation state.
 ///
-/// Implements differential payload generation depending on the active mode
-/// (Create vs. Update) to satisfy strict Pydantic DTO boundaries and guarantee
-/// zero technical debt regarding administrative provisioning.
+/// Contextually evaluates the current session claims (Superadmin vs Admin)
+/// to dynamically route payloads to either the administrative provisioning endpoint
+/// or the standard public registration pipeline.
 class AdminUserFormViewModel extends ChangeNotifier {
-  final UserService _touristService;
+  final UserService _userService;
+  final SessionService _sessionService;
   final UserModel? userToEdit;
 
   final TextEditingController cedulaController = TextEditingController();
@@ -21,9 +23,10 @@ class AdminUserFormViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isSuccess = false;
+  String _selectedRole = 'tourist'; // Default fallback
 
-  /// Injects the domain service and pre-fills form controllers if operating in Edit Mode.
-  AdminUserFormViewModel(this._touristService, {this.userToEdit}) {
+  /// Injects domain services and evaluates the presence of an injected entity.
+  AdminUserFormViewModel(this._userService, this._sessionService, {this.userToEdit}) {
     if (userToEdit != null) {
       cedulaController.text = userToEdit!.cedula;
       firstNameController.text = userToEdit!.firstName;
@@ -36,14 +39,18 @@ class AdminUserFormViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isSuccess => _isSuccess;
+  String get selectedRole => _selectedRole;
 
-  /// Evaluates the presence of an injected entity to determine the operational mode.
   bool get isEditMode => userToEdit != null;
+  bool get isSuperAdmin => _sessionService.userRole == 'superadmin';
+
+  /// Mutates the selected hierarchical role during creation mode.
+  void setRole(String role) {
+    _selectedRole = role;
+    notifyListeners();
+  }
 
   /// Generates a strict schema payload excluding immutable parameters.
-  ///
-  /// Deliberately omits 'role', 'is_active', and 'cedula' to comply with the
-  /// UserUpdate DTO and prevent unauthorized Privilege Escalation.
   Map<String, dynamic> _buildUpdatePayload() {
     return {
       "first_name": firstNameController.text.trim(),
@@ -53,8 +60,8 @@ class AdminUserFormViewModel extends ChangeNotifier {
     };
   }
 
-  /// Generates a complete creation payload inclusive of cryptographic requirements.
-  Map<String, dynamic> _buildCreationPayload() {
+  /// Generates a complete creation payload inclusive of the dynamically selected role.
+  Map<String, dynamic> _buildAdminCreationPayload() {
     return {
       "cedula": cedulaController.text.trim(),
       "first_name": firstNameController.text.trim(),
@@ -62,36 +69,52 @@ class AdminUserFormViewModel extends ChangeNotifier {
       "phone": phoneController.text.trim(),
       "email": emailController.text.trim(),
       "password": passwordController.text.trim(),
-      "role": "admin", // Bypasses the tourist default
-      "data_consent": true, // Architecturally assumed for administrative provisioning
-      "is_active": true, // Immediately active
+      "role": _selectedRole,
+      "data_consent": true,
+      "is_active": true,
     };
   }
 
-  /// Dispatches the creation payload bypassing standard registration limitations.
+  /// Evaluates RBAC constraints to dispatch the creation request to the appropriate backend endpoint.
   Future<void> saveUser() async {
     _setLoading(true);
     clearError();
 
-    final payload = _buildCreationPayload();
-    final result = await _touristService.createAdminUser(payload);
+    Map<String, dynamic> result;
+
+    if (isSuperAdmin) {
+      // Superadmins bypass public pipelines and provision active accounts directly.
+      final payload = _buildAdminCreationPayload();
+      result = await _userService.createAdminUser(payload);
+    } else {
+      // Standard Admins fall back to the public registration pipeline.
+      // This enforces the 'tourist' role and triggers standard backend email verifications.
+      result = await _userService.registerTourist(
+        cedula: cedulaController.text.trim(),
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+        firstName: firstNameController.text.trim(),
+        lastName: lastNameController.text.trim(),
+        phone: phoneController.text.trim(),
+        dataConsent: true,
+      );
+    }
 
     _handleResponse(result);
   }
 
-  /// Dispatches the partial update payload utilizing the immutable [cedula] as the target identifier.
+  /// Dispatches the partial update payload targeting the immutable [cedula].
   Future<void> updateUser() async {
     if (userToEdit == null) return;
     _setLoading(true);
     clearError();
 
     final payload = _buildUpdatePayload();
-    final result = await _touristService.updateUser(userToEdit!.cedula, payload);
+    final result = await _userService.updateUser(userToEdit!.cedula, payload);
 
     _handleResponse(result);
   }
 
-  /// Centralizes networking response parsing and state emission.
   void _handleResponse(Map<String, dynamic> result) {
     _setLoading(false);
     if (result['success']) {
@@ -112,7 +135,6 @@ class AdminUserFormViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Safely clears active error messages preventing notification loops.
   void clearError() => _errorMessage = null;
 
   @override
