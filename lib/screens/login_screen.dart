@@ -55,6 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// Commands the ViewModel to perform the login and handles routing upon success.
+  /// Commands the ViewModel to perform the login and handles routing upon success.
   void _handleLoginSubmission() async {
     // The ViewModel processes the network transaction and session storage.
     // It returns the user role if successful, or null if it fails.
@@ -65,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (role != null) {
       // Route the user based on their specific role (RBAC)
-      if (role == 'admin') {
+      if (role == 'admin' || role == 'superadmin') {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboardScreen()));
       } else {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CatalogScreen()));
