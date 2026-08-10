@@ -45,7 +45,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return ListenableBuilder(
         listenable: _sessionService,
         builder: (context, _) {
-          final isAdmin = _sessionService.userRole == 'admin';
+          final isAdmin = _sessionService.userRole == 'admin' || _sessionService.userRole == 'superadmin';
 
           return Scaffold(
             backgroundColor: const Color(0xFFF7F9FB),
