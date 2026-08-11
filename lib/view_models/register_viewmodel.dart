@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../services/tourist_service.dart';
+import '../services/user_service.dart';
 
 /// ViewModel responsible for orchestrating the registration presentation state.
 /// It strictly isolates business logic, memory lifecycle, and domain service calls.
 class RegisterViewModel extends ChangeNotifier {
-  final TouristService _touristService;
+  final UserService _userService;
 
   // Form Controllers strictly managed by the ViewModel to prevent memory leaks in the View.
   final TextEditingController cedulaController = TextEditingController(); // <-- Nuevo Controlador
@@ -21,7 +21,7 @@ class RegisterViewModel extends ChangeNotifier {
   bool _isSuccess = false;
 
   /// Injects the domain service dependency.
-  RegisterViewModel(this._touristService);
+  RegisterViewModel(this._userService);
 
   // Public getters to expose the state immutably to the View.
   bool get isLoading => _isLoading;
@@ -48,7 +48,7 @@ class RegisterViewModel extends ChangeNotifier {
     clearError(); // Wipe previous errors before a new attempt
 
     // 3. Domain Service Execution
-    final result = await _touristService.registerTourist(
+    final result = await _userService.registerTourist(
       cedula: cedulaController.text.trim(), // <-- Inyectado al servicio
       email: emailController.text.trim(),
       password: passwordController.text.trim(),

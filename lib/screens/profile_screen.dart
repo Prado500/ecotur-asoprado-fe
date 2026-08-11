@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/session_service.dart';
-import '../services/tourist_service.dart';
+import '../services/user_service.dart';
 import '../view_models/profile_viewmodel.dart';
 import 'login_screen.dart';
 
@@ -8,9 +8,9 @@ import 'login_screen.dart';
 /// Delegates all session and data actions to the [ProfileViewModel].
 class ProfileScreen extends StatefulWidget {
   final SessionService? sessionService;
-  final TouristService? touristService;
+  final UserService? userService;
 
-  const ProfileScreen({super.key, this.sessionService, this.touristService});
+  const ProfileScreen({super.key, this.sessionService, this.userService});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -25,7 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Dependency Injection: Initialize the ViewModel with the Wide State service and Domain service
     _viewModel = ProfileViewModel(
       widget.sessionService ?? SessionService(),
-      widget.touristService ?? TouristService(),
+      widget.userService ?? UserService(),
     );
 
     // Fire-and-forget invocation for future profile data hydration

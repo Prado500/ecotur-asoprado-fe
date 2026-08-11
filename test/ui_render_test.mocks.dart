@@ -7,10 +7,11 @@ import 'dart:async' as _i3;
 import 'dart:ui' as _i8;
 
 import 'package:ecotur_app/models/tourist_service_model.dart' as _i4;
+import 'package:ecotur_app/models/user_model.dart' as _i10;
 import 'package:ecotur_app/services/auth_service.dart' as _i5;
 import 'package:ecotur_app/services/catalog_service.dart' as _i2;
 import 'package:ecotur_app/services/session_service.dart' as _i6;
-import 'package:ecotur_app/services/tourist_service.dart' as _i9;
+import 'package:ecotur_app/services/user_service.dart' as _i9;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i7;
 
@@ -245,11 +246,11 @@ class MockSessionService extends _i1.Mock implements _i6.SessionService {
   );
 }
 
-/// A class which mocks [TouristService].
+/// A class which mocks [UserService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockTouristService extends _i1.Mock implements _i9.TouristService {
-  MockTouristService() {
+class MockUserService extends _i1.Mock implements _i9.UserService {
+  MockUserService() {
     _i1.throwOnMissingStub(this);
   }
 
@@ -283,6 +284,71 @@ class MockTouristService extends _i1.Mock implements _i9.TouristService {
   _i3.Future<Map<String, dynamic>> fetchMyProfile() =>
       (super.noSuchMethod(
             Invocation.method(#fetchMyProfile, []),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<List<_i10.UserModel>> fetchUsers() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchUsers, []),
+            returnValue: _i3.Future<List<_i10.UserModel>>.value(
+              <_i10.UserModel>[],
+            ),
+          )
+          as _i3.Future<List<_i10.UserModel>>);
+
+  @override
+  _i3.Future<List<_i10.UserModel>> fetchDeletedUsers() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchDeletedUsers, []),
+            returnValue: _i3.Future<List<_i10.UserModel>>.value(
+              <_i10.UserModel>[],
+            ),
+          )
+          as _i3.Future<List<_i10.UserModel>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> updateUser(
+    String? cedula,
+    Map<String, dynamic>? updateData,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateUser, [cedula, updateData]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> deleteUser(String? cedula) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteUser, [cedula]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> recoverUser(String? cedula) =>
+      (super.noSuchMethod(
+            Invocation.method(#recoverUser, [cedula]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> createAdminUser(
+    Map<String, dynamic>? userData,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#createAdminUser, [userData]),
             returnValue: _i3.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),

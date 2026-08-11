@@ -1,51 +1,76 @@
 import 'package:flutter/material.dart';
 import '../services/catalog_service.dart';
+import '../services/user_service.dart' as user_api;
 import '../models/tourist_service_model.dart';
+import '../models/user_model.dart';
 
-/// Defines the operational targets for state mutations in the Kanban board.
+/// Defines specific transition directives for package state mutations.
 enum PackageAction { activate, deactivate, softDelete, recover }
 
-/// ViewModel orchestrating the Kanban Board state logic.
-/// Manages parallel data fetching and seamless memory array shifting to prevent
-/// expensive full-page UI repaints.
+/// Defines specific transition directives for user account state mutations.
+enum UserAction { activate, deactivate, softDelete, recover }
+
+/// Manages the state and parallel data hydration for the Kanban interface.
+///
+/// Operates contextually based on the requested entity type, seamlessly shifting
+/// entities across memory arrays to prevent expensive layout repaints.
 class AdminKanbanViewModel extends ChangeNotifier {
   final CatalogService _catalogService;
+  final user_api.UserService _touristService;
+  final String entityType;
 
   List<TouristService> _activePackages = [];
   List<TouristService> _inactivePackages = [];
   List<TouristService> _deletedPackages = [];
 
+  List<UserModel> _activeUsers = [];
+  List<UserModel> _inactiveUsers = [];
+  List<UserModel> _deletedUsers = [];
+
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
 
-  /// Injects the domain service dependency.
-  AdminKanbanViewModel(this._catalogService);
+  AdminKanbanViewModel(this._catalogService, this._touristService, this.entityType);
 
   List<TouristService> get activePackages => _activePackages;
   List<TouristService> get inactivePackages => _inactivePackages;
   List<TouristService> get deletedPackages => _deletedPackages;
 
+  List<UserModel> get activeUsers => _activeUsers;
+  List<UserModel> get inactiveUsers => _inactiveUsers;
+  List<UserModel> get deletedUsers => _deletedUsers;
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
 
-  /// Fetches all 3 column data arrays concurrently using Future.wait.
-  /// This drastically reduces networking wait times.
+  /// Hydrates the Kanban columns concurrently based on the target entity context.
   Future<void> loadKanbanBoard() async {
     _setLoading(true);
     _clearMessages();
 
     try {
-      final results = await Future.wait([
-        _catalogService.fetchServices(),
-        _catalogService.fetchInactiveServices(),
-        _catalogService.fetchDeletedServices(),
-      ]);
+      if (entityType == 'paquetes') {
+        final results = await Future.wait([
+          _catalogService.fetchServices(),
+          _catalogService.fetchInactiveServices(),
+          _catalogService.fetchDeletedServices(),
+        ]);
+        _activePackages = results[0];
+        _inactivePackages = results[1];
+        _deletedPackages = results[2];
+      } else if (entityType == 'usuarios') {
+        final results = await Future.wait([
+          _touristService.fetchUsers(),
+          _touristService.fetchDeletedUsers(),
+        ]);
 
-      _activePackages = results[0];
-      _inactivePackages = results[1];
-      _deletedPackages = results[2];
+        final allLiveUsers = results[0];
+        _activeUsers = allLiveUsers.where((u) => u.isActive).toList();
+        _inactiveUsers = allLiveUsers.where((u) => !u.isActive).toList();
+        _deletedUsers = results[1];
+      }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
@@ -53,28 +78,20 @@ class AdminKanbanViewModel extends ChangeNotifier {
     }
   }
 
-  /// Dispatches the state mutation command to the backend and handles
-  /// the optimistic shifting of the entity within memory arrays upon success.
-  ///
-  /// Args:
-  ///   service (TouristService): The entity object to be mutated.
-  ///   action (PackageAction): The specific operation to execute against the backend.
+  /// Dispatches state mutation commands for Package entities and handles optimistic shifting.
   Future<void> mutatePackageState(TouristService service, PackageAction action) async {
     _setLoading(true);
     _clearMessages();
 
-    // 1. Safety Check: Ensure the entity possesses a valid relational database ID.
     final int targetId = service.id;
     if (targetId == 0) {
-      _errorMessage = 'Error de integridad: El paquete seleccionado carece de un ID válido.';
+      _errorMessage = 'Error de integridad: ID inválido.';
       _setLoading(false);
       return;
     }
 
     Map<String, dynamic> result;
-
     try {
-      // 2. Transactional Mapping: Route the action to the exact HTTP verb and endpoint.
       switch (action) {
         case PackageAction.activate:
           result = await _catalogService.activateService(targetId);
@@ -90,12 +107,9 @@ class AdminKanbanViewModel extends ChangeNotifier {
           break;
       }
 
-      // 3. Evaluate the unified API response contract.
       if (result['success']) {
         _successMessage = result['message'];
-
-        // 4. RAM Memory shifting (Optimistic update pattern)
-        _shiftEntityInMemory(service, action);
+        loadKanbanBoard(); // Full rehydration ensures DB synchronicity
       } else {
         _errorMessage = result['message'];
       }
@@ -106,27 +120,38 @@ class AdminKanbanViewModel extends ChangeNotifier {
     }
   }
 
-  /// Shifts the target entity across local arrays to reflect its new state
-  /// instantly without requiring a full backend reload.
-  void _shiftEntityInMemory(TouristService service, PackageAction action) {
-    switch (action) {
-      case PackageAction.activate:
-        _inactivePackages.remove(service);
-        _activePackages.add(service);
-        break;
-      case PackageAction.deactivate:
-        _activePackages.remove(service);
-        _inactivePackages.add(service);
-        break;
-      case PackageAction.softDelete:
-        _activePackages.remove(service);
-        _inactivePackages.remove(service);
-        _deletedPackages.add(service);
-        break;
-      case PackageAction.recover:
-        _deletedPackages.remove(service);
-        _inactivePackages.add(service); // Enforced business rule: Recovers to inactive
-        break;
+  /// Dispatches state mutation commands for User entities.
+  Future<void> mutateUserState(UserModel user, UserAction action) async {
+    _setLoading(true);
+    _clearMessages();
+
+    Map<String, dynamic> result;
+    try {
+      switch (action) {
+        case UserAction.activate:
+          result = await _touristService.updateUser(user.cedula, {'is_active': true});
+          break;
+        case UserAction.deactivate:
+          result = await _touristService.updateUser(user.cedula, {'is_active': false});
+          break;
+        case UserAction.softDelete:
+          result = await _touristService.deleteUser(user.cedula);
+          break;
+        case UserAction.recover:
+          result = await _touristService.recoverUser(user.cedula);
+          break;
+      }
+
+      if (result['success']) {
+        _successMessage = result['message'] ?? 'Operación completada.';
+        loadKanbanBoard(); // Full rehydration ensures DB synchronicity
+      } else {
+        _errorMessage = result['message'];
+      }
+    } catch (e) {
+      _errorMessage = 'Fallo de red al intentar mutar el estado del usuario.';
+    } finally {
+      _setLoading(false);
     }
   }
 

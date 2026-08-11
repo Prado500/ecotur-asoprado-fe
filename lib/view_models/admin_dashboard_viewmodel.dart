@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import '../services/tourist_service.dart';
+import '../services/user_service.dart';
 
 /// ViewModel orchestrating the Admin Dashboard state.
 /// Strictly isolates the profile hydration logic from the Dumb View.
 class AdminDashboardViewModel extends ChangeNotifier {
-  final TouristService _touristService;
+  final UserService _userService;
 
   bool _isLoading = false;
   String? _errorMessage;
   String _firstName = ""; // Will hold the dynamic name
 
   /// Injects the domain service dependency.
-  AdminDashboardViewModel(this._touristService);
+  AdminDashboardViewModel(this._userService);
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -22,7 +22,7 @@ class AdminDashboardViewModel extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    final result = await _touristService.fetchMyProfile();
+    final result = await _userService.fetchMyProfile();
 
     _isLoading = false;
 
