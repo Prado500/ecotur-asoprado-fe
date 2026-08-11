@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'screens/login_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/verification_screen.dart';
-import 'screens/catalog_screen.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,17 @@ Future<void> main() async {
   runApp(const EcoturApp());
 }
 
+/// Custom Scroll Behavior to enable mouse dragging on Web/Desktop.
+/// Flutter naturally disables mouse dragging for PageViews and ScrollViews on Web.
+class AppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+  };
+}
+
 class EcoturApp extends StatelessWidget {
   const EcoturApp({super.key});
 
@@ -25,6 +37,7 @@ class EcoturApp extends StatelessWidget {
     return MaterialApp(
       title: 'Ecotur Asoprado',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: AppScrollBehavior(),
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF7F9FB), // Surface
@@ -56,13 +69,12 @@ class EcoturApp extends StatelessWidget {
         ),
       ),
 
-
       initialRoute: '/',
       onGenerateRoute: (settings) {
         // Parsing of incoming URL
         final uri = Uri.parse(settings.name ?? '');
 
-        // Identification of user´s origin path (verification screen is only triggered if the user comes from the e-mail verification link)
+        // Identification of user's origin path (verification screen is only triggered if the user comes from the e-mail verification link)
         if (uri.path == '/usuarios/verificar-email') {
           final token = uri.queryParameters['token'];
 
