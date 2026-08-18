@@ -11,6 +11,7 @@ import 'admin_user_form_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'catalog_screen.dart';
 import '../widgets/common/hover_zoom_wrapper.dart';
+import 'audit_log_screen.dart';
 
 /// Dumb View rendering the Administrative Kanban Board for both Packages and Users.
 ///
@@ -242,11 +243,18 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
           Expanded(
             child: isAudit
                 ? Center(
-                child: ElevatedButton.icon(
-                  onPressed: () => UIHelpers.showSnackBar(context, 'Módulo de auditoría en construcción.', isError: false),
-                  icon: const Icon(Icons.history, color: Colors.white, size: 18),
-                  label: const Text('Ver Historial Completo', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006875), elevation: 0),
+                child: HoverZoomWrapper( // Manteniendo la deuda técnica saldada
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AuditLogScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.history, color: Colors.white, size: 18),
+                    label: const Text('Ver Historial Completo', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006875), elevation: 0),
+                  ),
                 )
             )
                 : ListView.builder(
