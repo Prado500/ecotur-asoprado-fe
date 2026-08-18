@@ -10,6 +10,7 @@ import 'admin_create_package_screen.dart';
 import 'admin_user_form_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'catalog_screen.dart';
+import '../widgets/common/hover_zoom_wrapper.dart';
 
 /// Dumb View rendering the Administrative Kanban Board for both Packages and Users.
 ///
@@ -283,9 +284,9 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(service.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF191C1E)), maxLines: 1, overflow: TextOverflow.ellipsis),
+          SelectableText(service.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF191C1E)), maxLines: 2),
           const SizedBox(height: 4),
-          Text(service.category.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF006875), letterSpacing: 0.5)),
+          SelectableText(service.category.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF006875), letterSpacing: 0.5)),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
@@ -317,11 +318,11 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
             children: [
               Icon(user.role == 'admin' ? Icons.shield : Icons.person, size: 16, color: const Color(0xFF006C49)),
               const SizedBox(width: 8),
-              Expanded(child: Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF191C1E)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(child: SelectableText(user.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF191C1E)), maxLines: 1)),
             ],
           ),
           const SizedBox(height: 4),
-          Text(user.email, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7A7D))),
+          SelectableText(user.email, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7A7D))),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
@@ -361,6 +362,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
                 child: Row(
                   children: [
                     Expanded(
+                      child: HoverZoomWrapper(
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           final result = await Navigator.push<bool>(
@@ -377,6 +379,7 @@ class _AdminKanbanScreenState extends State<AdminKanbanScreen> {
                         label: FittedBox(child: Text(isPackage ? 'Crear Paquete' : 'Crear Usuario', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
                         style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: const Color(0xFF006C49), elevation: 0),
                       ),
+                    ),
                     ),
 
                     // --- CONDITIONAL RENDERING: Public Catalog button only available if current user is at the tourist services screen
