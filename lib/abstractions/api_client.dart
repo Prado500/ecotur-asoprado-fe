@@ -52,11 +52,22 @@ class ApiClient {
       for (var file in files) {
         final byteStream = await file.readAsBytes();
 
+        // Extraer la extensión para determinar el MIME type correcto
+        final extension = file.name.split('.').last.toLowerCase();
+        String mimeType = 'image/jpeg'; // Fallback seguro
+
+        if (extension == 'png') mimeType = 'image/png';
+        else if (extension == 'webp') mimeType = 'image/webp';
+        else if (extension == 'gif') mimeType = 'image/gif';
+
+        final mimeParts = mimeType.split('/');
+
         request.files.add(
           http.MultipartFile.fromBytes(
             'images',
             byteStream,
             filename: file.name,
+            contentType: MediaType(mimeParts[0], mimeParts[1]),
           ),
         );
       }
