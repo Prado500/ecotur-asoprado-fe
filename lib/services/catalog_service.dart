@@ -1,3 +1,4 @@
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
 import '../abstractions/api_client.dart';
 import '../models/tourist_service_model.dart';
@@ -24,9 +25,18 @@ class CatalogService {
     }
   }
 
-  /// Dispatches the payload to create a new tourist package.
+  /// Dispatches the legacy JSON payload to create a new tourist package.
+  /// (Kept for backwards compatibility or fallback if needed)
   Future<Map<String, dynamic>> createService(Map<String, dynamic> serviceData) async {
     return await _apiClient.post('/servicios/', serviceData);
+  }
+
+  /// Dispatches the multipart payload and binary streams to create a new tourist package.
+  Future<Map<String, dynamic>> createServiceWithImages(
+      Map<String, String> fields,
+      List<XFile> images
+      ) async {
+    return await _apiClient.postMultipart('/servicios/', fields, images);
   }
 
   /// Fetches the list of inactive packages (Por Activar).
@@ -90,6 +100,16 @@ class CatalogService {
     return await _apiClient.put('/servicios/$serviceId', serviceData);
   }
 
+  // =========================================================================
+  //  FUTURE IMPLEMENTATION: MULTIPART UPDATE
+  // =========================================================================
+  // Future<Map<String, dynamic>> updateServiceWithImages(
+  //     int serviceId,
+  //     Map<String, String> fields,
+  //     List<XFile> newImages
+  // ) async {
+  //   return await _apiClient.putMultipart('/servicios/$serviceId', fields, newImages);
+  // }
 
 }
 
