@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/catalog_service.dart';
 import '../models/tourist_service_model.dart';
 
 /// ViewModel orchestrating the package creation and edition form state.
-/// Operates in a Bimodal fashion: creates a new package if [serviceToEdit] is null,
-/// or updates the existing entity if provided.
+/// Operates in a Bimodal fashion: creates a new package (multipart) if [serviceToEdit] is null,
+/// or updates the existing entity (JSON) if provided.
 class AdminCreatePackageViewModel extends ChangeNotifier {
+
   final CatalogService _catalogService;
   final TouristService? serviceToEdit;
 
@@ -14,7 +16,10 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
   final TextEditingController capacityController = TextEditingController();
-  final List<TextEditingController> imageUrlsControllers = [];
+
+  // Multipart File Management
+  final List<XFile> _selectedImages = [];
+  final ImagePicker _picker = ImagePicker();
 
   String _selectedCategory = 'metalmecanico';
   bool _isLoading = false;
@@ -29,19 +34,15 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
       priceController.text = serviceToEdit!.basePrice.toStringAsFixed(0);
       capacityController.text = serviceToEdit!.maxCapacity.toString();
       _selectedCategory = serviceToEdit!.category.toLowerCase();
-
-      for (var url in serviceToEdit!.imageUrls) {
-        imageUrlsControllers.add(TextEditingController(text: url));
-      }
+      // Nota: En modo edición las imágenes no se precargan aquí como XFiles porque ya viven en el CDN.
     }
   }
 
+  List<XFile> get selectedImages => _selectedImages;
   String get selectedCategory => _selectedCategory;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isSuccess => _isSuccess;
-
-  /// Computed property to determine the current operational mode of the view.
   bool get isEditMode => serviceToEdit != null;
 
   void setCategory(String category) {
@@ -49,67 +50,61 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addUrlField() {
-    imageUrlsControllers.add(TextEditingController());
+  /// Invokes the native file picker to select multiple images.
+  Future<void> pickImages() async {
+    final List<XFile> images = await _picker.pickMultiImage();
+    if (images.isNotEmpty) {
+      // Validar que no superen el límite de 10 imágenes del backend
+      if (_selectedImages.length + images.length > 10) {
+        _setError('No puedes seleccionar más de 10 imágenes en total.');
+        return;
+      }
+      _selectedImages.addAll(images);
+      notifyListeners();
+    }
+  }
+
+  /// Removes an image from the pending upload queue.
+  void removeImage(int index) {
+    _selectedImages.removeAt(index);
     notifyListeners();
   }
 
-  void removeUrlField(int index) {
-    imageUrlsControllers[index].dispose();
-    imageUrlsControllers.removeAt(index);
+  /// Reorders the list based on user Drag & Drop interaction.
+  void reorderImages(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    final XFile item = _selectedImages.removeAt(oldIndex);
+    _selectedImages.insert(newIndex, item);
     notifyListeners();
   }
 
-  /// Extracts form data into a sanitized JSON map complying with backend Pydantic schemas.
-  /// Used specifically for CREATING new packages.
-  Map<String, dynamic> _buildCreationPayload() {
-    List<String> urlsList = imageUrlsControllers
-        .map((controller) => controller.text.trim())
-        .where((text) => text.isNotEmpty)
-        .toList();
-
+  /// Extracts scalar form data into a Map<String, String> for multipart extraction (POST).
+  Map<String, String> _buildMultipartFields() {
     final rawPriceString = priceController.text.replaceAll('.', '').trim();
-
     return {
       "name": nameController.text.trim(),
       "description": descriptionController.text.trim(),
       "category": _selectedCategory,
-      "base_price": double.tryParse(rawPriceString) ?? 0.0,
-      "max_capacity": int.tryParse(capacityController.text.trim()) ?? 1,
-      "is_available": false, // <-- Nace inactivo obligatoriamente. El Kanban dictará su destino.
-      "image_urls": urlsList,
+      "base_price": rawPriceString.isEmpty ? "0" : rawPriceString,
+      "max_capacity": capacityController.text.trim(),
+      "is_available": "false",
     };
   }
 
-  /// Extracts form data into a sanitized JSON map complying with backend Pydantic schemas.
-  /// Used specifically for UPDATING existing packages.
-  Map<String, dynamic> _buildUpdatePayload() {
-    List<String> urlsList = imageUrlsControllers
-        .map((controller) => controller.text.trim())
-        .where((text) => text.isNotEmpty)
-        .toList();
-
-    final rawPriceString = priceController.text.replaceAll('.', '').trim();
-
-    return {
-      "name": nameController.text.trim(),
-      "description": descriptionController.text.trim(),
-      "category": _selectedCategory,
-      "base_price": double.tryParse(rawPriceString) ?? 0.0,
-      "max_capacity": int.tryParse(capacityController.text.trim()) ?? 1,
-      // Omitimos 'is_available' deliberadamente.
-      // El backend (ServiceUpdate) lo interpretará como None y NO sobreescribirá el estado actual.
-      "image_urls": urlsList,
-    };
-  }
-
-  /// Executes the creation workflow (POST).
+  /// Executes the creation workflow (POST with Multipart).
   Future<void> savePackage() async {
+    if (_selectedImages.isEmpty) {
+      _setError('Debes seleccionar al menos una imagen (la portada) para el paquete.');
+      return;
+    }
+
     _setLoading(true);
     clearError();
 
-    final packageData = _buildCreationPayload();
-    final result = await _catalogService.createService(packageData);
+    final fields = _buildMultipartFields();
+    final result = await _catalogService.createServiceWithImages(fields, _selectedImages);
 
     _handleResponse(result);
   }
@@ -121,9 +116,18 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
     _setLoading(true);
     clearError();
 
-    final packageData = _buildUpdatePayload();
-    final result = await _catalogService.updateService(serviceToEdit!.id, packageData);
+    // La actualización usa JSON estándar.
+    // Para actualizar imágenes se requiere lógica diferente (ej. borrar/añadir desde otro endpoint).
+    final rawPriceString = priceController.text.replaceAll('.', '').trim();
+    final packageData = {
+      "name": nameController.text.trim(),
+      "description": descriptionController.text.trim(),
+      "category": _selectedCategory,
+      "base_price": double.tryParse(rawPriceString) ?? 0.0,
+      "max_capacity": int.tryParse(capacityController.text.trim()) ?? 1,
+    };
 
+    final result = await _catalogService.updateService(serviceToEdit!.id, packageData);
     _handleResponse(result);
   }
 
@@ -157,9 +161,6 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
     descriptionController.dispose();
     priceController.dispose();
     capacityController.dispose();
-    for (var controller in imageUrlsControllers) {
-      controller.dispose();
-    }
     super.dispose();
   }
 }
