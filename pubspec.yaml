@@ -14,13 +14,15 @@ dependencies:
   http: ^1.6.0
   shared_preferences: ^2.5.5
   flutter_dotenv: ^6.0.1
+  image_picker: ^1.0.7
+  cross_file: ^0.3.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  mockito: ^5.4.4      # Dependencia para mocking determinista en pruebas
-  build_runner: ^2.4.8 # Generador de código para los mocks y null-safety
-  flutter_lints: ^6.0.0 # Reglas estrictas de análisis estático de Google
+  mockito: ^5.4.4
+  build_runner: ^2.4.8
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

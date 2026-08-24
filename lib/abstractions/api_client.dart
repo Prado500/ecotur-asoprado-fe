@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:http_parser/http_parser.dart';
+import 'package:cross_file/cross_file.dart';
 
 /// Centralized HTTP client abstraction.
 /// Handles base URL resolution, JWT token injection, and standard error parsing.
@@ -24,6 +26,54 @@ class ApiClient {
   /// Executes an HTTP POST request with automatic token injection.
   Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> body) async {
     return _request('POST', endpoint, body: body);
+  }
+
+  /// Executes a multipart/form-data POST request for binary file uploads.
+  Future<Map<String, dynamic>> postMultipart(
+      String endpoint,
+      Map<String, String> fields,
+      List<XFile> files
+      ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey);
+
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      var request = http.MultipartRequest('POST', uri);
+
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Inject standard string fields
+      request.fields.addAll(fields);
+
+      // Inject binary streams
+      for (var file in files) {
+        final byteStream = await file.readAsBytes();
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'images',
+            byteStream,
+            filename: file.name,
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decodedData = response.bodyBytes.isNotEmpty ? json.decode(utf8.decode(response.bodyBytes)) : {};
+        return {'success': true, 'data': decodedData};
+      } else {
+        return _handleApiError(response);
+      }
+    } catch (e) {
+      debugPrint('HTTP Multipart Client Error: $e');
+      return {'success': false, 'message': 'Falla al procesar la subida de archivos.'};
+    }
   }
 
   /// Executes an HTTP GET request with automatic token injection.
