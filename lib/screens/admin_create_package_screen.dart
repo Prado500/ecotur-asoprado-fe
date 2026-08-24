@@ -9,6 +9,8 @@ import '../utils/currency_formatter.dart';
 
 /// Dumb View rendering the bimodal package creation/edition layout.
 /// Evaluates [AdminCreatePackageViewModel.isEditMode] to mutate titles and submission buttons.
+/// Seamlessly handles local XFile selection via Drag & Drop for creation,
+/// and displays a read-only Cloud status with existing thumbnails during edition.
 class AdminCreatePackageScreen extends StatefulWidget {
   final CatalogService? catalogService;
   final TouristService? serviceToEdit;
@@ -205,57 +207,166 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                     const SizedBox(height: 24),
                     const Padding(
                       padding: EdgeInsets.only(bottom: 8.0),
-                      child: Text('ENLACES DE IMÁGENES PÚBLICAS', style: TextStyle(fontSize: 12, color: Color(0xFF3B494C), fontWeight: FontWeight.bold)),
+                      child: Text('IMÁGENES DEL PAQUETE', style: TextStyle(fontSize: 12, color: Color(0xFF3B494C), fontWeight: FontWeight.bold)),
                     ),
                     ListenableBuilder(
                         listenable: _viewModel,
                         builder: (context, child) {
-                          return Column(
-                            children: [
-                              ..._viewModel.imageUrlsControllers.asMap().entries.map((entry) {
-                                int index = entry.key;
-                                TextEditingController controller = entry.value;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: AdminFormField(
-                                          label: '',
-                                          hint: 'https://ejemplo.com/foto.jpg',
-                                          controller: controller,
-                                          validator: (val) {
-                                            if (val != null && val.isNotEmpty && !val.startsWith('http://') && !val.startsWith('https://')) {
-                                              return 'Debe ser un enlace válido (http:// o https://)';
-                                            }
-                                            return null;
-                                          },
-                                        ),
+                          // ==========================================
+                          // EDIT MODE: Read-only interface with Thumbnail Grid
+                          // ==========================================
+                          if (_viewModel.isEditMode) {
+                            return Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF2F4F6),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFBAC9CC), style: BorderStyle.solid),
+                              ),
+                              child: Column(
+                                children: [
+                                  // --- VISUALIZATION OF EXISTING CDN IMAGES ---
+                                  if (_viewModel.serviceToEdit!.imageUrls.isNotEmpty) ...[
+                                    SizedBox(
+                                      height: 100, // Fixed height for the thumbnail ribbon
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: _viewModel.serviceToEdit!.imageUrls.length,
+                                        itemBuilder: (context, index) {
+                                          final url = _viewModel.serviceToEdit!.imageUrls[index];
+                                          return Container(
+                                            width: 100,
+                                            margin: const EdgeInsets.only(right: 12),
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                  color: index == 0 ? const Color(0xFF006C49) : const Color(0xFFBAC9CC),
+                                                  width: index == 0 ? 2 : 1
+                                              ),
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(6),
+                                              child: Stack(
+                                                fit: StackFit.expand,
+                                                children: [
+                                                  Image.network(
+                                                    url,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+                                                  ),
+                                                  if (index == 0)
+                                                    Positioned(
+                                                      bottom: 0, left: 0, right: 0,
+                                                      child: Container(
+                                                        // Explicit use of .withValues() following modern Flutter Guidelines
+                                                        color: const Color(0xFF006C49).withValues(alpha: 0.9),
+                                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                                        child: const Text('PORTADA', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A)),
-                                        onPressed: () => _viewModel.removeUrlField(index),
-                                      ),
-                                    ],
+                                    ),
+                                    const SizedBox(height: 24),
+                                    const Divider(color: Color(0xFFBAC9CC), height: 1),
+                                    const SizedBox(height: 24),
+                                  ],
+                                  // --- END VISUALIZATION ---
+
+                                  const Icon(Icons.cloud_done_outlined, color: Color(0xFF006875), size: 32),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Las imágenes están alojadas de forma segura en la nube (CDN).',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF191C1E)),
                                   ),
-                                );
-                              }),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'La modificación de multimedia para paquetes existentes estará habilitada en la próxima versión del sistema.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 12, color: Color(0xFF6B7A7D)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          // ==========================================
+                          // CREATE MODE: ReorderableListView (Drag & Drop)
+                          // ==========================================
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_viewModel.selectedImages.isNotEmpty)
+                                SizedBox(
+                                  height: 300,
+                                  child: ReorderableListView.builder(
+                                    buildDefaultDragHandles: false,
+                                    itemCount: _viewModel.selectedImages.length,
+                                    onReorder: _viewModel.reorderImages,
+                                    itemBuilder: (context, index) {
+                                      final imageItem = _viewModel.selectedImages[index];
+
+                                      return Container(
+                                        key: ValueKey(imageItem.path),
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                              color: index == 0 ? const Color(0xFF006C49) : const Color(0xFFBAC9CC),
+                                              width: index == 0 ? 2 : 1
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: ListTile(
+                                          leading: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              ReorderableDragStartListener(
+                                                index: index,
+                                                child: const Icon(Icons.drag_indicator, color: Color(0xFF6B7A7D)),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              const Icon(Icons.image_outlined, color: Color(0xFF006C49))
+                                            ],
+                                          ),
+                                          title: Text(
+                                              imageItem.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal)
+                                          ),
+                                          subtitle: index == 0
+                                              ? const Text('PORTADA PRINCIPAL', style: TextStyle(color: Color(0xFF006C49), fontSize: 10, fontWeight: FontWeight.bold))
+                                              : const Text('Archivo local nuevo', style: TextStyle(fontSize: 10)),
+                                          trailing: IconButton(
+                                            icon: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A)),
+                                            onPressed: () => _viewModel.removeImage(index),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: _viewModel.pickImages,
+                                icon: const Icon(Icons.add_photo_alternate_outlined, color: Color(0xFF006C49)),
+                                label: const Text('SELECCIONAR IMÁGENES LOCALES', style: TextStyle(color: Color(0xFF006C49), fontWeight: FontWeight.bold)),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 48),
+                                  side: const BorderSide(color: Color(0xFF006C49), width: 1.5),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                ),
+                              ),
                             ],
                           );
                         }
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _viewModel.addUrlField,
-                      icon: const Icon(Icons.add_link, color: Color(0xFF006C49)),
-                      label: const Text('AGREGAR URL DE IMAGEN', style: TextStyle(color: Color(0xFF006C49), fontWeight: FontWeight.bold)),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 48),
-                        side: const BorderSide(color: Color(0xFF006C49), width: 1.5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      ),
                     ),
                   ],
                 ),
@@ -270,6 +381,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+          // Explicit use of .withValues() following modern Flutter Guidelines
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
         ),
         child: SafeArea(
