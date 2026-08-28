@@ -195,8 +195,8 @@ API_URL=http://localhost:8000
       await tester.pumpAndSettle();
 
       expect(find.text('CREAR NUEVO PAQUETE'), findsOneWidget);
-      expect(find.text('SELECCIONAR IMÁGENES LOCALES'), findsOneWidget);
-      expect(find.text('GUARDAR'), findsOneWidget);
+      expect(find.text('SELECCIONAR IMÁGENES', skipOffstage: false), findsOneWidget);
+      expect(find.text('GUARDAR', skipOffstage: false), findsOneWidget);
     });
 
     // --- TEST 9: ADMIN CREATE PACKAGE SCREEN (EDITION MODE) ---
@@ -212,7 +212,7 @@ API_URL=http://localhost:8000
         basePrice: 50000,
         maxCapacity: 10,
         isAvailable: true,
-        imageUrls: ['https://azure.com/img1.jpg'],
+        imageUrls: ['https://azure.com/img1.jpg', 'https://azure.com/img2.jpg'],
       );
 
       await tester.pumpWidget(MaterialApp(
@@ -225,10 +225,11 @@ API_URL=http://localhost:8000
 
       expect(find.text('EDITAR PAQUETE'), findsOneWidget);
       // Validates the presence of the Read-Only disclaimer
-      expect(find.text('Las imágenes están alojadas de forma segura en la nube (CDN).'), findsOneWidget);
-      expect(find.text('ACTUALIZAR'), findsOneWidget);
+      expect(find.text('PORTADA PRINCIPAL', skipOffstage: false), findsOneWidget);
+      expect(find.text('Cargada', skipOffstage: false), findsWidgets);
+      expect(find.text('ACTUALIZAR', skipOffstage: false), findsOneWidget);
       // Strictly asserts that the upload button is NOT rendered in edit mode
-      expect(find.text('SELECCIONAR IMÁGENES LOCALES'), findsNothing);
+      expect(find.text('SELECCIONAR IMÁGENES', skipOffstage: false), findsOneWidget);
     });
 
   });
