@@ -19,6 +19,7 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
 
   // Unified Image Management (Only URLs exist here, no XFiles in memory)
   final List<String> _selectedImagesUrls = [];
+  final Map<String, String> _imageNamesMap = {};
   final ImagePicker _picker = ImagePicker();
 
   String _selectedCategory = 'metalmecanico';
@@ -37,10 +38,14 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
       _selectedCategory = serviceToEdit!.category.toLowerCase();
       // Hydrate the baseline state with existing permanent CDN URLs
       _selectedImagesUrls.addAll(serviceToEdit!.imageUrls);
+      for (var url in serviceToEdit!.imageUrls) {
+        _imageNamesMap[url] = url.split('/').last;
+      }
     }
   }
 
   List<String> get selectedImagesUrls => _selectedImagesUrls;
+  Map<String, String> get imageNamesMap => _imageNamesMap;
   String get selectedCategory => _selectedCategory;
   bool get isLoading => _isLoading;
   bool get isUploadingImages => _isUploadingImages;
@@ -77,6 +82,11 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
 
       // 5. State Hydration
       _selectedImagesUrls.addAll(temporalUrls);
+
+      for (int i = 0; i < temporalUrls.length; i++) {
+        _imageNamesMap[temporalUrls[i]] = images[i].name;
+      }
+
     } catch (e) {
       _setError(e.toString().replaceAll('Exception: ', ''));
     } finally {
@@ -89,7 +99,8 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
   /// Removes a URL from the payload queue (Does not trigger immediate backend deletion).
   void removeImage(int index) {
     if (_isUploadingImages) return; // Prevent mutation during I/O locks
-    _selectedImagesUrls.removeAt(index);
+    String removedUrl = _selectedImagesUrls.removeAt(index);
+    _imageNamesMap.remove(removedUrl);
     notifyListeners();
   }
 

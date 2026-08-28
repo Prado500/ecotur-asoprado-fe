@@ -227,6 +227,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                                       final url = _viewModel.selectedImagesUrls[index];
                                       final fileName = url.split('/').last;
                                       final isTemporal = url.contains('temp-ecotur-images');
+                                      final realName = _viewModel.imageNamesMap[url] ?? fileName;
 
                                       return Container(
                                         key: ValueKey(url),
@@ -261,11 +262,13 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                                               ),
                                             ],
                                           ),
-                                          title: Text(
-                                              fileName,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal, fontSize: 12)
+                                          title: Tooltip(
+                                            message: realName,
+                                            child: SelectableText(
+                                                realName,
+                                                maxLines: 1,
+                                                style: TextStyle(fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal, fontSize: 12)
+                                            ),
                                           ),
                                           subtitle: Text(
                                               index == 0

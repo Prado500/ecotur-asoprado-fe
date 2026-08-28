@@ -41,6 +41,11 @@ void main() {
       // Eager Uploading Paradigm: The unified String list must be hydrated with permanent CDN URLs
       expect(viewModel.selectedImagesUrls.isNotEmpty, isTrue);
       expect(viewModel.selectedImagesUrls.first, 'https://ecoturasopradocdn2026.blob.core.windows.net/ecotur-images/1.jpg');
+
+      // Assert local metadata hydration (In-Memory URL-to-Filename dictionary)
+      expect(viewModel.imageNamesMap.isNotEmpty, isTrue);
+      expect(viewModel.imageNamesMap.containsKey('https://ecoturasopradocdn2026.blob.core.windows.net/ecotur-images/1.jpg'), isTrue);
+      expect(viewModel.imageNamesMap['https://ecoturasopradocdn2026.blob.core.windows.net/ecotur-images/1.jpg'], '1.jpg');
     });
 
     test('savePackage should halt execution and set error if no images are selected', () async {
