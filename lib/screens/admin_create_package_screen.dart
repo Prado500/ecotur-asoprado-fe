@@ -7,10 +7,9 @@ import '../widgets/admin/admin_form_field.dart';
 import '../utils/ui_helpers.dart';
 import '../utils/currency_formatter.dart';
 
-/// Dumb View rendering the bimodal package creation/edition layout.
-/// Evaluates [AdminCreatePackageViewModel.isEditMode] to mutate titles and submission buttons.
-/// Seamlessly handles local XFile selection via Drag & Drop for creation,
-/// and displays a read-only Cloud status with existing thumbnails during edition.
+/// Dumb View rendering the unified package creation/edition layout.
+/// Leverages Eager Uploading: Local files are immediately staged to the CDN,
+/// allowing a single interactive Drag & Drop list for both Create and Edit modes.
 class AdminCreatePackageScreen extends StatefulWidget {
   final CatalogService? catalogService;
   final TouristService? serviceToEdit;
@@ -44,7 +43,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
     if (_viewModel.isSuccess) {
       final successMsg = _viewModel.isEditMode ? '¡Paquete actualizado exitosamente!' : '¡Paquete creado exitosamente!';
       UIHelpers.showSnackBar(context, successMsg, isError: false);
-      if (mounted) Navigator.pop(context, true); // Yields 'true' to parent view to trigger data hydration
+      if (mounted) Navigator.pop(context, true);
     }
   }
 
@@ -55,7 +54,6 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
     super.dispose();
   }
 
-  /// Triggers standard creation, or prompts a confirmation dialog if editing.
   void _handleSubmit() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -66,7 +64,6 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
     }
   }
 
-  /// Renders a non-blocking confirmation dialog to prevent accidental data overwrites.
   void _showConfirmationDialog() {
     showDialog(
       context: context,
@@ -213,107 +210,26 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                         listenable: _viewModel,
                         builder: (context, child) {
                           // ==========================================
-                          // EDIT MODE: Read-only interface with Thumbnail Grid
-                          // ==========================================
-                          if (_viewModel.isEditMode) {
-                            return Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF2F4F6),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFBAC9CC), style: BorderStyle.solid),
-                              ),
-                              child: Column(
-                                children: [
-                                  // --- VISUALIZATION OF EXISTING CDN IMAGES ---
-                                  if (_viewModel.serviceToEdit!.imageUrls.isNotEmpty) ...[
-                                    SizedBox(
-                                      height: 100, // Fixed height for the thumbnail ribbon
-                                      child: ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: _viewModel.serviceToEdit!.imageUrls.length,
-                                        itemBuilder: (context, index) {
-                                          final url = _viewModel.serviceToEdit!.imageUrls[index];
-                                          return Container(
-                                            width: 100,
-                                            margin: const EdgeInsets.only(right: 12),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(
-                                                  color: index == 0 ? const Color(0xFF006C49) : const Color(0xFFBAC9CC),
-                                                  width: index == 0 ? 2 : 1
-                                              ),
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(6),
-                                              child: Stack(
-                                                fit: StackFit.expand,
-                                                children: [
-                                                  Image.network(
-                                                    url,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
-                                                  ),
-                                                  if (index == 0)
-                                                    Positioned(
-                                                      bottom: 0, left: 0, right: 0,
-                                                      child: Container(
-                                                        // Explicit use of .withValues() following modern Flutter Guidelines
-                                                        color: const Color(0xFF006C49).withValues(alpha: 0.9),
-                                                        padding: const EdgeInsets.symmetric(vertical: 4),
-                                                        child: const Text('PORTADA', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                    const Divider(color: Color(0xFFBAC9CC), height: 1),
-                                    const SizedBox(height: 24),
-                                  ],
-                                  // --- END VISUALIZATION ---
-
-                                  const Icon(Icons.cloud_done_outlined, color: Color(0xFF006875), size: 32),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'Las imágenes están alojadas de forma segura en la nube (CDN).',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF191C1E)),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'La modificación de multimedia para paquetes existentes estará habilitada en la próxima versión del sistema.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 12, color: Color(0xFF6B7A7D)),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          // ==========================================
-                          // CREATE MODE: ReorderableListView (Drag & Drop)
+                          // UNIFIED EAGER UPLOADING UI: Interactive Drag & Drop for BOTH modes
                           // ==========================================
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              if (_viewModel.selectedImages.isNotEmpty)
+                              if (_viewModel.selectedImagesUrls.isNotEmpty)
                                 SizedBox(
                                   height: 300,
                                   child: ReorderableListView.builder(
                                     buildDefaultDragHandles: false,
-                                    itemCount: _viewModel.selectedImages.length,
-                                    onReorder: _viewModel.reorderImages,
+                                    itemCount: _viewModel.selectedImagesUrls.length,
+                                    // Bloquear reordenamiento si se están subiendo imágenes
+                                    onReorder: _viewModel.isUploadingImages ? (o, n) {} : _viewModel.reorderImages,
                                     itemBuilder: (context, index) {
-                                      final imageItem = _viewModel.selectedImages[index];
+                                      final url = _viewModel.selectedImagesUrls[index];
+                                      final fileName = url.split('/').last;
+                                      final isTemporal = url.contains('temp-ecotur-images');
 
                                       return Container(
-                                        key: ValueKey(imageItem.path),
+                                        key: ValueKey(url),
                                         margin: const EdgeInsets.only(bottom: 8),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
@@ -327,26 +243,43 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                                           leading: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              ReorderableDragStartListener(
-                                                index: index,
-                                                child: const Icon(Icons.drag_indicator, color: Color(0xFF6B7A7D)),
-                                              ),
+                                              if (!_viewModel.isUploadingImages)
+                                                ReorderableDragStartListener(
+                                                  index: index,
+                                                  child: const Icon(Icons.drag_indicator, color: Color(0xFF6B7A7D)),
+                                                ),
                                               const SizedBox(width: 8),
-                                              const Icon(Icons.image_outlined, color: Color(0xFF006C49))
+                                              ClipRRect(
+                                                borderRadius: BorderRadius.circular(4),
+                                                child: Image.network(
+                                                  url,
+                                                  width: 40,
+                                                  height: 40,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+                                                ),
+                                              ),
                                             ],
                                           ),
                                           title: Text(
-                                              imageItem.name,
+                                              fileName,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal)
+                                              style: TextStyle(fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal, fontSize: 12)
                                           ),
-                                          subtitle: index == 0
-                                              ? const Text('PORTADA PRINCIPAL', style: TextStyle(color: Color(0xFF006C49), fontSize: 10, fontWeight: FontWeight.bold))
-                                              : const Text('Archivo local nuevo', style: TextStyle(fontSize: 10)),
+                                          subtitle: Text(
+                                              index == 0
+                                                  ? 'PORTADA PRINCIPAL'
+                                                  : (isTemporal ? 'Nueva - Sin Guardar' : 'Alojada en CDN'),
+                                              style: TextStyle(
+                                                  color: index == 0 ? const Color(0xFF006C49) : const Color(0xFF6B7A7D),
+                                                  fontSize: 10,
+                                                  fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal
+                                              )
+                                          ),
                                           trailing: IconButton(
-                                            icon: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A)),
-                                            onPressed: () => _viewModel.removeImage(index),
+                                            icon: Icon(Icons.delete_outline, color: _viewModel.isUploadingImages ? Colors.grey : const Color(0xFFBA1A1A)),
+                                            onPressed: _viewModel.isUploadingImages ? null : () => _viewModel.removeImage(index),
                                           ),
                                         ),
                                       );
@@ -355,9 +288,14 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                                 ),
                               const SizedBox(height: 16),
                               OutlinedButton.icon(
-                                onPressed: _viewModel.pickImages,
-                                icon: const Icon(Icons.add_photo_alternate_outlined, color: Color(0xFF006C49)),
-                                label: const Text('SELECCIONAR IMÁGENES LOCALES', style: TextStyle(color: Color(0xFF006C49), fontWeight: FontWeight.bold)),
+                                onPressed: _viewModel.isUploadingImages ? null : _viewModel.pickImages,
+                                icon: _viewModel.isUploadingImages
+                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Color(0xFF006C49), strokeWidth: 2))
+                                    : const Icon(Icons.cloud_upload_outlined, color: Color(0xFF006C49)),
+                                label: Text(
+                                    _viewModel.isUploadingImages ? 'SUBIENDO AL CDN TEMPORAL...' : 'SELECCIONAR IMÁGENES LOCALES',
+                                    style: const TextStyle(color: Color(0xFF006C49), fontWeight: FontWeight.bold)
+                                ),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size(double.infinity, 48),
                                   side: const BorderSide(color: Color(0xFF006C49), width: 1.5),
@@ -388,10 +326,15 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
           child: Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Color(0xFFBAC9CC))),
-                  child: const Text('CANCELAR', style: TextStyle(color: Color(0xFF191C1E))),
+                child: ListenableBuilder(
+                    listenable: _viewModel,
+                    builder: (context, child) {
+                      return OutlinedButton(
+                        onPressed: _viewModel.isUploadingImages ? null : () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Color(0xFFBAC9CC))),
+                        child: const Text('CANCELAR', style: TextStyle(color: Color(0xFF191C1E))),
+                      );
+                    }
                 ),
               ),
               const SizedBox(width: 16),
@@ -399,8 +342,9 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                 child: ListenableBuilder(
                     listenable: _viewModel,
                     builder: (context, child) {
+                      final bool isLocked = _viewModel.isLoading || _viewModel.isUploadingImages;
                       return ElevatedButton.icon(
-                        onPressed: _viewModel.isLoading ? null : _handleSubmit,
+                        onPressed: isLocked ? null : _handleSubmit,
                         icon: _viewModel.isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white)) : const Icon(Icons.save, color: Colors.white, size: 18),
                         label: Text(_viewModel.isEditMode ? 'ACTUALIZAR' : 'GUARDAR', style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006C49), padding: const EdgeInsets.symmetric(vertical: 16)),
