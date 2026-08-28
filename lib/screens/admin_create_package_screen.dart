@@ -270,7 +270,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                                           subtitle: Text(
                                               index == 0
                                                   ? 'PORTADA PRINCIPAL'
-                                                  : (isTemporal ? 'Nueva - Sin Guardar' : 'Alojada en CDN'),
+                                                  : (isTemporal ? 'Nueva - Sin Guardar' : 'Cargada'),
                                               style: TextStyle(
                                                   color: index == 0 ? const Color(0xFF006C49) : const Color(0xFF6B7A7D),
                                                   fontSize: 10,
@@ -293,7 +293,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Color(0xFF006C49), strokeWidth: 2))
                                     : const Icon(Icons.cloud_upload_outlined, color: Color(0xFF006C49)),
                                 label: Text(
-                                    _viewModel.isUploadingImages ? 'SUBIENDO AL CDN TEMPORAL...' : 'SELECCIONAR IMÁGENES LOCALES',
+                                    _viewModel.isUploadingImages ? 'CARGANDO...' : 'SELECCIONAR IMÁGENES',
                                     style: const TextStyle(color: Color(0xFF006C49), fontWeight: FontWeight.bold)
                                 ),
                                 style: OutlinedButton.styleFrom(
