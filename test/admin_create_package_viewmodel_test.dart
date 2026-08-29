@@ -16,10 +16,11 @@ void main() {
       viewModel = AdminCreatePackageViewModel(mockCatalogService);
 
       expect(viewModel.isEditMode, isFalse);
-      expect(viewModel.selectedImages.isEmpty, isTrue);
+      // Evaluates the new unified URL array
+      expect(viewModel.selectedImagesUrls.isEmpty, isTrue);
     });
 
-    test('Should initialize in Edition Mode and hydrate text fields', () {
+    test('Should initialize in Edition Mode and hydrate text fields and URLs', () {
       final dummyService = TouristService(
           id: 1,
           name: 'Test Package',
@@ -28,7 +29,7 @@ void main() {
           basePrice: 50000,
           maxCapacity: 15,
           isAvailable: true,
-          imageUrls: ['http://cdn.com/1.jpg']
+          imageUrls: ['https://ecoturasopradocdn2026.blob.core.windows.net/ecotur-images/1.jpg']
       );
 
       viewModel = AdminCreatePackageViewModel(mockCatalogService, serviceToEdit: dummyService);
@@ -36,14 +37,21 @@ void main() {
       expect(viewModel.isEditMode, isTrue);
       expect(viewModel.nameController.text, 'Test Package');
       expect(viewModel.selectedCategory, 'agroturismo');
-      // In edit mode, the local XFile list MUST be empty since images live in the CDN
-      expect(viewModel.selectedImages.isEmpty, isTrue);
+
+      // Eager Uploading Paradigm: The unified String list must be hydrated with permanent CDN URLs
+      expect(viewModel.selectedImagesUrls.isNotEmpty, isTrue);
+      expect(viewModel.selectedImagesUrls.first, 'https://ecoturasopradocdn2026.blob.core.windows.net/ecotur-images/1.jpg');
+
+      // Assert local metadata hydration (In-Memory URL-to-Filename dictionary)
+      expect(viewModel.imageNamesMap.isNotEmpty, isTrue);
+      expect(viewModel.imageNamesMap.containsKey('https://ecoturasopradocdn2026.blob.core.windows.net/ecotur-images/1.jpg'), isTrue);
+      expect(viewModel.imageNamesMap['https://ecoturasopradocdn2026.blob.core.windows.net/ecotur-images/1.jpg'], '1.jpg');
     });
 
     test('savePackage should halt execution and set error if no images are selected', () async {
       viewModel = AdminCreatePackageViewModel(mockCatalogService);
 
-      // Attempt to trigger the save workflow with an empty XFile array
+      // Attempt to trigger the save workflow with an empty string array
       await viewModel.savePackage();
 
       // Assert that the ViewModel traps the error before hitting the Domain Layer
