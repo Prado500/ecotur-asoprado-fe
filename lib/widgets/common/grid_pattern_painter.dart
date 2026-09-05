@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 
 class GridPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF006875).withOpacity(0.03)
+      ..color = AppColors.primary.withOpacity(0.03)
       ..strokeWidth = 1;
 
     const double spacing = 24.0;

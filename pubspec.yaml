@@ -27,12 +27,14 @@ flutter:
 
   assets:
     - .env
+    - assets/images/prado_splash.jpeg
+    - assets/images/asoprado_logo.jpeg
 
   fonts:
-    - family: Space Grotesk
+    - family: Montserrat
       fonts:
-        - asset: assets/fonts/Space_Grotesk/static/SpaceGrotesk-Regular.ttf
-        - asset: assets/fonts/Space_Grotesk/static/SpaceGrotesk-Bold.ttf
+        - asset: assets/fonts/Montserrat/static/Montserrat-Regular.ttf
+        - asset: assets/fonts/Montserrat/static/Montserrat-Bold.ttf
           weight: 700
     - family: Inter
       fonts:

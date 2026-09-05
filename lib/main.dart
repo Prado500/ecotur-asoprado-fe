@@ -1,3 +1,4 @@
+import 'package:ecotur_app/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'screens/login_screen.dart';
@@ -86,7 +87,7 @@ class EcoturApp extends StatelessWidget {
         }
 
         // Default Route (Fallback)
-        return MaterialPageRoute(builder: (context) => const LoginScreen());
+        return MaterialPageRoute(builder: (context) => const SplashScreen());
       },
     );
   }

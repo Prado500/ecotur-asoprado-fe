@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 
 class DiagonalLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFBAC9CC).withOpacity(0.4)
+      ..color = AppColors.decorativeLine.withOpacity(0.4)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
