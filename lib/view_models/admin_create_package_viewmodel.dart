@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/catalog_service.dart';
 import '../models/tourist_service_model.dart';
 
 /// ViewModel orchestrating the package creation and edition form state.
-/// Operates in a Bimodal fashion: creates a new package if [serviceToEdit] is null,
-/// or updates the existing entity if provided.
+/// Implements an "Eager Uploading" pattern: local files are immediately pushed
+/// to the CDN staging environment, maintaining a unified List<String> of URLs.
 class AdminCreatePackageViewModel extends ChangeNotifier {
+
   final CatalogService _catalogService;
   final TouristService? serviceToEdit;
 
@@ -14,10 +16,15 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
   final TextEditingController capacityController = TextEditingController();
-  final List<TextEditingController> imageUrlsControllers = [];
+
+  // Unified Image Management (Only URLs exist here, no XFiles in memory)
+  final List<String> _selectedImagesUrls = [];
+  final Map<String, String> _imageNamesMap = {};
+  final ImagePicker _picker = ImagePicker();
 
   String _selectedCategory = 'metalmecanico';
-  bool _isLoading = false;
+  bool _isLoading = false;          // Controls the main Save/Update button
+  bool _isUploadingImages = false;  // Controls the Eager Upload UI locks
   String? _errorMessage;
   bool _isSuccess = false;
 
@@ -29,19 +36,21 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
       priceController.text = serviceToEdit!.basePrice.toStringAsFixed(0);
       capacityController.text = serviceToEdit!.maxCapacity.toString();
       _selectedCategory = serviceToEdit!.category.toLowerCase();
-
+      // Hydrate the baseline state with existing permanent CDN URLs
+      _selectedImagesUrls.addAll(serviceToEdit!.imageUrls);
       for (var url in serviceToEdit!.imageUrls) {
-        imageUrlsControllers.add(TextEditingController(text: url));
+        _imageNamesMap[url] = url.split('/').last;
       }
     }
   }
 
+  List<String> get selectedImagesUrls => _selectedImagesUrls;
+  Map<String, String> get imageNamesMap => _imageNamesMap;
   String get selectedCategory => _selectedCategory;
   bool get isLoading => _isLoading;
+  bool get isUploadingImages => _isUploadingImages;
   String? get errorMessage => _errorMessage;
   bool get isSuccess => _isSuccess;
-
-  /// Computed property to determine the current operational mode of the view.
   bool get isEditMode => serviceToEdit != null;
 
   void setCategory(String category) {
@@ -49,80 +58,108 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addUrlField() {
-    imageUrlsControllers.add(TextEditingController());
+  /// Eager Uploading Pattern: Invokes the native file picker and immediately
+  /// dispatches the binary chunks to the backend's staging endpoint.
+  Future<void> pickImages() async {
+    // 1. Native Picker Invocation
+    final List<XFile> images = await _picker.pickMultiImage();
+
+    if (images.isEmpty) return;
+
+    // 2. Fail-Fast UI Boundary Validation
+    if (_selectedImagesUrls.length + images.length > 10) {
+      _setError('No puedes tener más de 10 imágenes en total por paquete.');
+      return;
+    }
+
+    // 3. UI Lock State Mutation
+    _isUploadingImages = true;
+    notifyListeners();
+
+    try {
+      // 4. Staging Delegation
+      final List<String> temporalUrls = await _catalogService.uploadStagingImages(images);
+
+      // 5. State Hydration
+      _selectedImagesUrls.addAll(temporalUrls);
+
+      for (int i = 0; i < temporalUrls.length; i++) {
+        _imageNamesMap[temporalUrls[i]] = images[i].name;
+      }
+
+    } catch (e) {
+      _setError(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      // 6. UI Unlock State Mutation
+      _isUploadingImages = false;
+      notifyListeners();
+    }
+  }
+
+  /// Removes a URL from the payload queue (Does not trigger immediate backend deletion).
+  void removeImage(int index) {
+    if (_isUploadingImages) return; // Prevent mutation during I/O locks
+    String removedUrl = _selectedImagesUrls.removeAt(index);
+    _imageNamesMap.remove(removedUrl);
     notifyListeners();
   }
 
-  void removeUrlField(int index) {
-    imageUrlsControllers[index].dispose();
-    imageUrlsControllers.removeAt(index);
+  /// Reorders the declarative array based on user Drag & Drop interaction.
+  void reorderImages(int oldIndex, int newIndex) {
+    if (_isUploadingImages) return; // Prevent mutation during I/O locks
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    final String item = _selectedImagesUrls.removeAt(oldIndex);
+    _selectedImagesUrls.insert(newIndex, item);
     notifyListeners();
   }
 
-  /// Extracts form data into a sanitized JSON map complying with backend Pydantic schemas.
-  /// Used specifically for CREATING new packages.
-  Map<String, dynamic> _buildCreationPayload() {
-    List<String> urlsList = imageUrlsControllers
-        .map((controller) => controller.text.trim())
-        .where((text) => text.isNotEmpty)
-        .toList();
-
+  /// Extracts scalar form data and arrays into a unified pure JSON Map.
+  Map<String, dynamic> _buildJsonPayload() {
     final rawPriceString = priceController.text.replaceAll('.', '').trim();
-
     return {
       "name": nameController.text.trim(),
       "description": descriptionController.text.trim(),
       "category": _selectedCategory,
       "base_price": double.tryParse(rawPriceString) ?? 0.0,
       "max_capacity": int.tryParse(capacityController.text.trim()) ?? 1,
-      "is_available": false, // <-- Nace inactivo obligatoriamente. El Kanban dictará su destino.
-      "image_urls": urlsList,
+      "image_urls": _selectedImagesUrls,
     };
   }
 
-  /// Extracts form data into a sanitized JSON map complying with backend Pydantic schemas.
-  /// Used specifically for UPDATING existing packages.
-  Map<String, dynamic> _buildUpdatePayload() {
-    List<String> urlsList = imageUrlsControllers
-        .map((controller) => controller.text.trim())
-        .where((text) => text.isNotEmpty)
-        .toList();
-
-    final rawPriceString = priceController.text.replaceAll('.', '').trim();
-
-    return {
-      "name": nameController.text.trim(),
-      "description": descriptionController.text.trim(),
-      "category": _selectedCategory,
-      "base_price": double.tryParse(rawPriceString) ?? 0.0,
-      "max_capacity": int.tryParse(capacityController.text.trim()) ?? 1,
-      // Omitimos 'is_available' deliberadamente.
-      // El backend (ServiceUpdate) lo interpretará como None y NO sobreescribirá el estado actual.
-      "image_urls": urlsList,
-    };
-  }
-
-  /// Executes the creation workflow (POST).
+  /// Executes the creation workflow dispatching a pure JSON payload.
   Future<void> savePackage() async {
+    if (_selectedImagesUrls.isEmpty) {
+      _setError('Debes seleccionar al menos una imagen (la portada) para el paquete.');
+      return;
+    }
+
     _setLoading(true);
     clearError();
 
-    final packageData = _buildCreationPayload();
-    final result = await _catalogService.createService(packageData);
+    final payload = _buildJsonPayload();
+    final result = await _catalogService.createService(payload);
 
     _handleResponse(result);
   }
 
-  /// Executes the update workflow (PUT).
+  /// Executes the update workflow dispatching a pure JSON payload.
   Future<void> updatePackage() async {
     if (serviceToEdit == null) return;
+    if (_selectedImagesUrls.isEmpty) {
+      _setError('Debes seleccionar al menos una imagen (la portada) para el paquete.');
+      return;
+    }
 
     _setLoading(true);
     clearError();
 
-    final packageData = _buildUpdatePayload();
-    final result = await _catalogService.updateService(serviceToEdit!.id, packageData);
+    final payload = _buildJsonPayload();
+    // Injects the implicitly defined active status mapping back to the API validation schema
+    payload["is_available"] = serviceToEdit!.isAvailable;
+
+    final result = await _catalogService.updateService(serviceToEdit!.id, payload);
 
     _handleResponse(result);
   }
@@ -157,9 +194,6 @@ class AdminCreatePackageViewModel extends ChangeNotifier {
     descriptionController.dispose();
     priceController.dispose();
     capacityController.dispose();
-    for (var controller in imageUrlsControllers) {
-      controller.dispose();
-    }
     super.dispose();
   }
 }

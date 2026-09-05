@@ -7,8 +7,9 @@ import '../widgets/admin/admin_form_field.dart';
 import '../utils/ui_helpers.dart';
 import '../utils/currency_formatter.dart';
 
-/// Dumb View rendering the bimodal package creation/edition layout.
-/// Evaluates [AdminCreatePackageViewModel.isEditMode] to mutate titles and submission buttons.
+/// Dumb View rendering the unified package creation/edition layout.
+/// Leverages Eager Uploading: Local files are immediately staged to the CDN,
+/// allowing a single interactive Drag & Drop list for both Create and Edit modes.
 class AdminCreatePackageScreen extends StatefulWidget {
   final CatalogService? catalogService;
   final TouristService? serviceToEdit;
@@ -42,7 +43,7 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
     if (_viewModel.isSuccess) {
       final successMsg = _viewModel.isEditMode ? '¡Paquete actualizado exitosamente!' : '¡Paquete creado exitosamente!';
       UIHelpers.showSnackBar(context, successMsg, isError: false);
-      if (mounted) Navigator.pop(context, true); // Yields 'true' to parent view to trigger data hydration
+      if (mounted) Navigator.pop(context, true);
     }
   }
 
@@ -53,7 +54,6 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
     super.dispose();
   }
 
-  /// Triggers standard creation, or prompts a confirmation dialog if editing.
   void _handleSubmit() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -64,7 +64,6 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
     }
   }
 
-  /// Renders a non-blocking confirmation dialog to prevent accidental data overwrites.
   void _showConfirmationDialog() {
     showDialog(
       context: context,
@@ -205,57 +204,110 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                     const SizedBox(height: 24),
                     const Padding(
                       padding: EdgeInsets.only(bottom: 8.0),
-                      child: Text('ENLACES DE IMÁGENES PÚBLICAS', style: TextStyle(fontSize: 12, color: Color(0xFF3B494C), fontWeight: FontWeight.bold)),
+                      child: Text('IMÁGENES DEL PAQUETE', style: TextStyle(fontSize: 12, color: Color(0xFF3B494C), fontWeight: FontWeight.bold)),
                     ),
                     ListenableBuilder(
                         listenable: _viewModel,
                         builder: (context, child) {
+                          // ==========================================
+                          // UNIFIED EAGER UPLOADING UI: Interactive Drag & Drop for BOTH modes
+                          // ==========================================
                           return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              ..._viewModel.imageUrlsControllers.asMap().entries.map((entry) {
-                                int index = entry.key;
-                                TextEditingController controller = entry.value;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: AdminFormField(
-                                          label: '',
-                                          hint: 'https://ejemplo.com/foto.jpg',
-                                          controller: controller,
-                                          validator: (val) {
-                                            if (val != null && val.isNotEmpty && !val.startsWith('http://') && !val.startsWith('https://')) {
-                                              return 'Debe ser un enlace válido (http:// o https://)';
-                                            }
-                                            return null;
-                                          },
+                              if (_viewModel.selectedImagesUrls.isNotEmpty)
+                                SizedBox(
+                                  height: 300,
+                                  child: ReorderableListView.builder(
+                                    buildDefaultDragHandles: false,
+                                    itemCount: _viewModel.selectedImagesUrls.length,
+                                    // Bloquear reordenamiento si se están subiendo imágenes
+                                    onReorder: _viewModel.isUploadingImages ? (o, n) {} : _viewModel.reorderImages,
+                                    itemBuilder: (context, index) {
+                                      final url = _viewModel.selectedImagesUrls[index];
+                                      final fileName = url.split('/').last;
+                                      final isTemporal = url.contains('temp-ecotur-images');
+                                      final realName = _viewModel.imageNamesMap[url] ?? fileName;
+
+                                      return Container(
+                                        key: ValueKey(url),
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                              color: index == 0 ? const Color(0xFF006C49) : const Color(0xFFBAC9CC),
+                                              width: index == 0 ? 2 : 1
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A)),
-                                        onPressed: () => _viewModel.removeUrlField(index),
-                                      ),
-                                    ],
+                                        child: ListTile(
+                                          leading: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (!_viewModel.isUploadingImages)
+                                                ReorderableDragStartListener(
+                                                  index: index,
+                                                  child: const Icon(Icons.drag_indicator, color: Color(0xFF6B7A7D)),
+                                                ),
+                                              const SizedBox(width: 8),
+                                              ClipRRect(
+                                                borderRadius: BorderRadius.circular(4),
+                                                child: Image.network(
+                                                  url,
+                                                  width: 40,
+                                                  height: 40,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          title: Tooltip(
+                                            message: realName,
+                                            child: SelectableText(
+                                                realName,
+                                                maxLines: 1,
+                                                style: TextStyle(fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal, fontSize: 12)
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                              index == 0
+                                                  ? 'PORTADA PRINCIPAL'
+                                                  : (isTemporal ? 'Nueva - Sin Guardar' : 'Cargada'),
+                                              style: TextStyle(
+                                                  color: index == 0 ? const Color(0xFF006C49) : const Color(0xFF6B7A7D),
+                                                  fontSize: 10,
+                                                  fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal
+                                              )
+                                          ),
+                                          trailing: IconButton(
+                                            icon: Icon(Icons.delete_outline, color: _viewModel.isUploadingImages ? Colors.grey : const Color(0xFFBA1A1A)),
+                                            onPressed: _viewModel.isUploadingImages ? null : () => _viewModel.removeImage(index),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              }),
+                                ),
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: _viewModel.isUploadingImages ? null : _viewModel.pickImages,
+                                icon: _viewModel.isUploadingImages
+                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Color(0xFF006C49), strokeWidth: 2))
+                                    : const Icon(Icons.cloud_upload_outlined, color: Color(0xFF006C49)),
+                                label: Text(
+                                    _viewModel.isUploadingImages ? 'CARGANDO...' : 'SELECCIONAR IMÁGENES',
+                                    style: const TextStyle(color: Color(0xFF006C49), fontWeight: FontWeight.bold)
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 48),
+                                  side: const BorderSide(color: Color(0xFF006C49), width: 1.5),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                ),
+                              ),
                             ],
                           );
                         }
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _viewModel.addUrlField,
-                      icon: const Icon(Icons.add_link, color: Color(0xFF006C49)),
-                      label: const Text('AGREGAR URL DE IMAGEN', style: TextStyle(color: Color(0xFF006C49), fontWeight: FontWeight.bold)),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 48),
-                        side: const BorderSide(color: Color(0xFF006C49), width: 1.5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      ),
                     ),
                   ],
                 ),
@@ -270,16 +322,22 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+          // Explicit use of .withValues() following modern Flutter Guidelines
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
         ),
         child: SafeArea(
           child: Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Color(0xFFBAC9CC))),
-                  child: const Text('CANCELAR', style: TextStyle(color: Color(0xFF191C1E))),
+                child: ListenableBuilder(
+                    listenable: _viewModel,
+                    builder: (context, child) {
+                      return OutlinedButton(
+                        onPressed: _viewModel.isUploadingImages ? null : () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Color(0xFFBAC9CC))),
+                        child: const Text('CANCELAR', style: TextStyle(color: Color(0xFF191C1E))),
+                      );
+                    }
                 ),
               ),
               const SizedBox(width: 16),
@@ -287,8 +345,9 @@ class _AdminCreatePackageScreenState extends State<AdminCreatePackageScreen> {
                 child: ListenableBuilder(
                     listenable: _viewModel,
                     builder: (context, child) {
+                      final bool isLocked = _viewModel.isLoading || _viewModel.isUploadingImages;
                       return ElevatedButton.icon(
-                        onPressed: _viewModel.isLoading ? null : _handleSubmit,
+                        onPressed: isLocked ? null : _handleSubmit,
                         icon: _viewModel.isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white)) : const Icon(Icons.save, color: Colors.white, size: 18),
                         label: Text(_viewModel.isEditMode ? 'ACTUALIZAR' : 'GUARDAR', style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006C49), padding: const EdgeInsets.symmetric(vertical: 16)),

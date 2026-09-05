@@ -1,3 +1,4 @@
+import 'package:ecotur_app/models/tourist_service_model.dart';
 import 'package:ecotur_app/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -183,5 +184,53 @@ API_URL=http://localhost:8000
 
       expect(find.text('CREAR CUENTA'), findsOneWidget);
     });
+
+    // --- TEST 8: ADMIN CREATE PACKAGE SCREEN (CREATION MODE) ---
+    testWidgets('Should render Admin Package Form in Creation Mode with upload button', (WidgetTester tester) async {
+      final mockCatalogService = MockCatalogService();
+
+      await tester.pumpWidget(MaterialApp(
+        home: AdminCreatePackageScreen(catalogService: mockCatalogService),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CREAR NUEVO PAQUETE'), findsOneWidget);
+      expect(find.text('SELECCIONAR IMÁGENES', skipOffstage: false), findsOneWidget);
+      expect(find.text('GUARDAR', skipOffstage: false), findsOneWidget);
+    });
+
+    // --- TEST 9: ADMIN CREATE PACKAGE SCREEN (EDITION MODE) ---
+    testWidgets('Should render Admin Package Form in Edition Mode with Read-Only UI', (WidgetTester tester) async {
+      final mockCatalogService = MockCatalogService();
+
+      // Stubbing an existing service to trigger Edition Mode
+      final dummyService = TouristService(
+        id: 1,
+        name: 'Paquete de Prueba en Nube',
+        description: 'Descripción',
+        category: 'recreacional',
+        basePrice: 50000,
+        maxCapacity: 10,
+        isAvailable: true,
+        imageUrls: ['https://azure.com/img1.jpg', 'https://azure.com/img2.jpg'],
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: AdminCreatePackageScreen(
+          catalogService: mockCatalogService,
+          serviceToEdit: dummyService,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EDITAR PAQUETE'), findsOneWidget);
+      // Validates the presence of the Read-Only disclaimer
+      expect(find.text('PORTADA PRINCIPAL', skipOffstage: false), findsOneWidget);
+      expect(find.text('Cargada', skipOffstage: false), findsWidgets);
+      expect(find.text('ACTUALIZAR', skipOffstage: false), findsOneWidget);
+      // Strictly asserts that the upload button is NOT rendered in edit mode
+      expect(find.text('SELECCIONAR IMÁGENES', skipOffstage: false), findsOneWidget);
+    });
+
   });
 }

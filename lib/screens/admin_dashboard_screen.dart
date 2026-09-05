@@ -5,6 +5,7 @@ import '../widgets/admin/admin_bottom_nav_bar.dart';
 import '../view_models/admin_dashboard_viewmodel.dart';
 import '../utils/ui_helpers.dart';
 import 'profile_screen.dart';
+import '../widgets/common/hover_zoom_wrapper.dart';
 
 /// Dumb View rendering the Administrative Action Hub.
 /// Incorporates high-performance entry animations and observes [AdminDashboardViewModel].
@@ -63,7 +64,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   /// Builds the centralized action cards following the specific Paint mockup design.
   Widget _buildActionCard(String title, IconData icon, VoidCallback onTap) {
-    return GestureDetector(
+    return HoverZoomWrapper(
+      child: GestureDetector(
       onTap: onTap,
       child: Container(
         width: 140,
@@ -88,7 +90,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           ],
         ),
       ),
-    );
+      ),
+      );
   }
 
   @override
