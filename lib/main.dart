@@ -1,7 +1,6 @@
 import 'package:ecotur_app/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'screens/login_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/verification_screen.dart';
 

@@ -7,7 +7,7 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 
 // Import application screens
-import 'package:ecotur_app/screens/login_screen.dart';
+import 'package:ecotur_app/screens/auth_screen.dart';
 import 'package:ecotur_app/screens/catalog_screen.dart';
 import 'package:ecotur_app/screens/admin_dashboard_screen.dart';
 import 'package:ecotur_app/screens/admin_kanban_screen.dart';
@@ -40,7 +40,7 @@ API_URL=http://localhost:8000
       final mockSessionService = MockSessionService();
 
       await tester.pumpWidget(MaterialApp(
-        home: LoginScreen(authService: mockAuthService, sessionService: mockSessionService),
+        home: AuthScreen(authService: mockAuthService, sessionService: mockSessionService),
       ));
       await tester.pumpAndSettle();
 

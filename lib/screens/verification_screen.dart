@@ -3,7 +3,7 @@ import '../services/auth_service.dart';
 import '../view_models/verification_viewmodel.dart';
 import '../widgets/common/diagonal_painter.dart';
 import '../utils/ui_helpers.dart';
-import 'login_screen.dart';
+import 'auth_screen.dart';
 
 /// Dumb View rendering the email verification interface.
 /// It intercepts the token from the URL and delegates validation to [VerificationViewModel].
@@ -135,7 +135,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
         SizedBox(
           width: double.infinity, height: 48,
           child: OutlinedButton(
-            onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false),
+            onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const AuthScreen()), (route) => false),
             style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF006875), width: 1.5)),
             child: const Text('Ir al Inicio de Sesión', style: TextStyle(color: Color(0xFF006875), fontSize: 16, fontWeight: FontWeight.bold)),
           ),

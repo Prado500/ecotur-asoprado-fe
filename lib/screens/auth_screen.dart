@@ -38,6 +38,7 @@ class _AuthScreenState extends State<AuthScreen> {
   late AuthMode _mode;
   late final LoginViewModel _loginViewModel;
   late final RegisterViewModel _registerViewModel;
+  final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
 
   @override
@@ -72,6 +73,10 @@ class _AuthScreenState extends State<AuthScreen> {
         '¡Cuenta creada exitosamente! Revise su correo electrónico e inicie sesión.',
         isError: false,
       );
+
+      _registerViewModel.clearForm();
+
+
       setState(() => _mode = AuthMode.login);
     }
   }
@@ -86,6 +91,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _handleLoginSubmission() async {
+    if (!_loginFormKey.currentState!.validate()) return;
     final role = await _loginViewModel.performLogin();
     if (!mounted) return;
 
@@ -340,64 +346,70 @@ class _AuthScreenState extends State<AuthScreen> {
 
   /// Formulario Login
   Widget _buildLoginForm(BuildContext context, {required Key key}) {
-    return Column(
-      key: key,
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _AuthTabSwitcher(mode: AuthMode.login, onModeSelected: _switchMode),
-        const SizedBox(height: 24),
+    return Form(
+      key: _loginFormKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: Column(
+          key: key,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _AuthTabSwitcher(mode: AuthMode.login, onModeSelected: _switchMode),
+            const SizedBox(height: 24),
 
-        const Text('Bienvenido de nuevo', style: AppTextStyles.displayTitle),
-        const SizedBox(height: 8),
-        const Text('Ingresa tus datos para acceder a tu cuenta.', style: AppTextStyles.subtitle),
-        const SizedBox(height: 28),
+            const Text('Bienvenido de nuevo', style: AppTextStyles.displayTitle),
+            const SizedBox(height: 8),
+            const Text('Ingresa tus datos para acceder a tu cuenta.', style: AppTextStyles.subtitle),
+            const SizedBox(height: 28),
 
-        _buildField(
-          label: 'CORREO ELECTRÓNICO',
-          hint: 'correo@gmail.com',
-          icon: Icons.email_outlined,
-          controller: _loginViewModel.emailController,
-          keyboardType: TextInputType.emailAddress,
-        ),
-        _buildField(
-          label: 'CONTRASEÑA',
-          hint: '......',
-          icon: Icons.lock_outline,
-          controller: _loginViewModel.passwordController,
-          isPassword: true,
-          bottomSpacing: 8,
-        ),
-
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: _handlePassword,
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(50, 30),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            _buildField(
+              label: 'CORREO ELECTRÓNICO',
+              hint: 'correo@gmail.com',
+              icon: Icons.email_outlined,
+              controller: _loginViewModel.emailController,
+              keyboardType: TextInputType.emailAddress,
+              validator: _Validators.email,
             ),
-            child: Text(
-              '¿Olvidaste tu contraseña?',
-              style: AppTextStyles.subtitle.copyWith(
-                color: AppColors.accent,
-                fontWeight: FontWeight.w600,
+            _buildField(
+              label: 'CONTRASEÑA',
+              hint: '......',
+              icon: Icons.lock_outline,
+              controller: _loginViewModel.passwordController,
+              isPassword: true,
+              bottomSpacing: 8,
+              validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
+            ),
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _handlePassword,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(50, 30),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  '¿Olvidaste tu contraseña?',
+                  style: AppTextStyles.subtitle.copyWith(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: 18),
+            const SizedBox(height: 18),
 
-        ListenableBuilder(
-          listenable: _loginViewModel,
-          builder: (context, _) => _PrimaryButton(
-            isLoading: _loginViewModel.isLoading,
-            onPressed: _handleLoginSubmission,
-            label: 'Iniciar sesión',
-          ),
+            ListenableBuilder(
+              listenable: _loginViewModel,
+              builder: (context, _) => _PrimaryButton(
+                isLoading: _loginViewModel.isLoading,
+                onPressed: _handleLoginSubmission,
+                label: 'Iniciar sesión',
+              ),
+            ),
+          ],
         ),
-      ],
     );
   }
 
@@ -405,6 +417,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildRegisterForm(BuildContext context, {required Key key}) {
     return Form(
       key: _registerFormKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: Column(
         key: key,
         mainAxisSize: MainAxisSize.min,
@@ -664,7 +677,6 @@ class _TabPill extends StatelessWidget {
     );
   }
 }
-
 /// Campo tipo píldora/óvalo — mismo componente visual.
 class _PillInput extends StatefulWidget {
   final String hint;
