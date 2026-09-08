@@ -84,6 +84,23 @@ class RegisterViewModel extends ChangeNotifier {
     _errorMessage = null;
   }
 
+  void clearForm(){
+    // Reset the success status for future registration
+    _isSuccess = false;
+
+    firstNameController.clear();
+    lastNameController.clear();
+    cedulaController.clear();
+    phoneController.clear();
+    emailController.clear();
+    passwordController.clear();
+
+    setDataConsent(false);
+
+    notifyListeners();
+
+  }
+
   /// Gracefully destroys the text controllers when the View is popped from the navigation stack.
   @override
   void dispose() {

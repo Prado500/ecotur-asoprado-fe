@@ -1,8 +1,9 @@
+import 'package:ecotur_app/screens/auth_screen.dart';
 import 'package:flutter/material.dart';
 import '../services/session_service.dart';
 import '../services/user_service.dart';
 import '../view_models/profile_viewmodel.dart';
-import 'login_screen.dart';
+import 'auth_screen.dart';
 
 /// Dumb View rendering the user profile.
 /// Delegates all session and data actions to the [ProfileViewModel].
@@ -49,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Purge the navigation stack and redirect to Login
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      MaterialPageRoute(builder: (context) => const AuthScreen()),
           (Route<dynamic> route) => false,
     );
   }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_text_style.dart';
 
 class CustomInput extends StatefulWidget {
   final String label;
@@ -26,6 +28,7 @@ class CustomInput extends StatefulWidget {
 
 class _CustomInputState extends State<CustomInput> {
   bool _obscurePassword = true;
+  bool _isFocused = false;
 
   @override
   void initState() {
@@ -40,7 +43,7 @@ class _CustomInputState extends State<CustomInput> {
       children: [
         Text(
             widget.label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF3B494C), letterSpacing: 0.5)
+            style: AppTextStyles.inputLabel
         ),
         const SizedBox(height: 8),
         TextFormField( // <-- Transformado para soportar FormState
@@ -51,11 +54,11 @@ class _CustomInputState extends State<CustomInput> {
           autovalidateMode: AutovalidateMode.onUserInteraction, // <-- Valida en tiempo real
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-            prefixIcon: Icon(widget.icon, color: const Color(0xFF6B7A7D)),
+            hintStyle: AppTextStyles.inputValue.copyWith(color: Colors.grey[400]),
+            prefixIcon: Icon(widget.icon, color:_isFocused ? AppColors.accent : AppColors.iconInactive),
             suffixIcon: widget.isPassword
                 ? IconButton(
-              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF6B7A7D)),
+              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppColors.iconInactive),
               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
             )
                 : null,
