@@ -1,0 +1,68 @@
+# ==============================================================================
+# PIPELINE CI: FRONTEND ECOTUR ASOPRADO
+# Propósito: Compuerta de calidad pre-merge (Pruebas unitarias) y generación de APK.
+# Se dispara EXCLUSIVAMENTE cuando se abre un Pull Request hacia ramas principales.
+# ==============================================================================
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - develop
+      - staging
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+
+variables:
+  ${{ if in(variables['System.PullRequest.TargetBranch'], 'develop', 'refs/heads/develop') }}:
+    ENTORNO: 'VG-ECOTUR-DEV'
+  ${{ elseif in(variables['System.PullRequest.TargetBranch'], 'staging', 'refs/heads/staging') }}:
+    ENTORNO: 'VG-ECOTUR-STG'
+  ${{ elseif in(variables['System.PullRequest.TargetBranch'], 'main', 'refs/heads/main') }}:
+    ENTORNO: 'VG-ECOTUR-MAIN'
+  ${{ else }}:
+    ENTORNO: ''
+
+jobs:
+  - job: Compilar_y_Probar_APK
+    displayName: 'Quality Gate y Generación de APK Dinámico'
+
+
+    condition: and(succeeded(), ne(variables['System.PullRequest.TargetBranch'], ''))
+
+    ${{ if ne(variables.ENTORNO, '') }}:
+      variables:
+        - group: ${{ variables.ENTORNO }}
+
+    steps:
+      - script: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1
+          echo "##vso[task.prependpath]$(pwd)/flutter/bin"
+        displayName: 'Instalar Flutter SDK'
+
+      - script: |
+          echo "Generando archivo .env vacío para el entorno CI..."
+          touch .env
+        displayName: 'Setup: Inyectar .env Dummy'
+
+      - script: flutter pub get
+        displayName: 'Instalar dependencias'
+
+      - script: flutter test
+        displayName: 'Quality Gate: Ejecutar Pruebas Unitarias'
+
+      - script: |
+          echo "Compilando APK conectado al backend: $(DEPLOYED_BACKEND)"
+          flutter build apk --release --dart-define=API_URL=$(DEPLOYED_BACKEND)
+        displayName: 'CI: Construir Instalador Android (APK)'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publicar Artefacto Móvil'
+        inputs:
+          PathtoPublish: 'build/app/outputs/flutter-apk/app-release.apk'
+          ArtifactName: 'ecotur-android-apk'
+          publishLocation: 'Container'
