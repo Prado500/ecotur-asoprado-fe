@@ -10,6 +10,7 @@ import '../theme/app_text_style.dart';
 import 'admin_dashboard_screen.dart';
 import 'catalog_screen.dart';
 import 'password_screen.dart';
+import '../utils/responsive_helper.dart';
 
 enum AuthMode { login, register }
 
@@ -119,14 +120,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktopOrTablet =
+        ResponsiveHelper.isDesktop(context) || ResponsiveHelper.isTablet(context);
+
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 900;
-          return isDesktop ? _buildDesktopLayout(context) : _buildMobileLayout(context);
-        },
-      ),
+      body: isDesktopOrTablet ? _buildDesktopLayout(context) : _buildMobileLayout(context),
     );
   }
 
