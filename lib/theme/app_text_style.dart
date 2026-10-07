@@ -108,4 +108,12 @@ class AppTextStyles {
     fontSize: 11.5,
     color: AppColors.error,
   );
+
+  /// Texto para las pestañas de la barra de navegación inferior
+  static const bottomNavLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 1.0,
+  );
 }

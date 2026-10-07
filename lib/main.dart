@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/verification_screen.dart';
-
+import 'theme/app_text_style.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,11 +47,11 @@ class EcoturApp extends StatelessWidget {
           surface: Color(0xFFF7F9FB),
           error: Color(0xFFBA1A1A),
         ),
-        fontFamily: 'Inter',
+        fontFamily: AppTextStyles.fontFamily,
         textTheme: const TextTheme(
-          displayLarge: TextStyle(fontFamily: 'Space Grotesk', fontSize: 48, fontWeight: FontWeight.bold, color: Color(0xFF191C1E)),
-          headlineMedium: TextStyle(fontFamily: 'Space Grotesk', fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF191C1E)),
-          bodyMedium: TextStyle(fontFamily: 'Inter', fontSize: 16, color: Color(0xFF191C1E)),
+          displayLarge: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Color(0xFF191C1E)),
+          headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF191C1E)),
+          bodyMedium: TextStyle(fontSize: 16, color: Color(0xFF191C1E)),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,

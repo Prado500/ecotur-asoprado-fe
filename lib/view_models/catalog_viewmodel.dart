@@ -22,6 +22,11 @@ class CatalogViewModel extends ChangeNotifier {
   /// Exposes the error message if the domain operation fails.
   String? get errorMessage => _errorMessage;
 
+  // Clears the error message once consumed by the UI (SnackBar).
+  void clearError() {
+    _errorMessage = null;
+  }
+
   /// Triggers the background data fetching operation through the domain service.
   Future<void> loadCatalog() async {
     _isLoading = true;
