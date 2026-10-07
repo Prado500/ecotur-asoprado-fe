@@ -31,6 +31,9 @@ flutter:
     - .env
     - assets/images/prado_splash.jpeg
     - assets/images/asoprado_logo.jpeg
+    - assets/images/experiencias.png
+    - assets/images/mapa.png
+    - assets/images/reserva.png
 
   fonts:
     - family: Montserrat

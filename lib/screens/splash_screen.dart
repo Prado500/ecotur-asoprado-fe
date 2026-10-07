@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_style.dart';
 import 'auth_screen.dart';
+import '../services/session_service.dart';
+import 'catalog_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -45,14 +47,33 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   void _onProgressStatusChanged(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
-      _goToLogin();
+      _handleNavigation();
     }
   }
 
-  void _goToLogin() {
+  /// Verifica la sesión del usuario
+  Future<void> _handleNavigation() async {
     if (_navigated || !mounted) return;
     _navigated = true;
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AuthScreen()));
+
+    final sessionService = SessionService();
+    final hasSession = await sessionService.checkExistingSession();
+
+    if (!mounted) return;
+
+    if (hasSession) {
+      // Si la sesión está activa, redirige al catálogo directamente
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const CatalogScreen()),
+      );
+    } else {
+      // Si no hay sesión o expiro, redirige a la pantalla de login/registro
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const AuthScreen()),
+      );
+    }
   }
 
   @override
@@ -271,7 +292,7 @@ class _DashedRingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     const dashCount = 36;
     const dashSweep = (2 * math.pi) / dashCount;
-    const dashFraction = 0.55; // qué porción de cada segmento se dibuja (vs. espacio en blanco)
+    const dashFraction = 0.55;
 
     for (int i = 0; i < dashCount; i++) {
       final start = i * dashSweep;
